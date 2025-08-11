@@ -144,11 +144,14 @@ class InteractiveBabyCharacter {
             CONFIG.CAMERA.NEAR,
             CONFIG.CAMERA.FAR
         );
-        this.camera.position.set(
-            CONFIG.CAMERA.INITIAL_POSITION.x,
-            CONFIG.CAMERA.INITIAL_POSITION.y,
-            CONFIG.CAMERA.INITIAL_POSITION.z
-        );
+        
+        // Position camera to fit model on screen by default
+        this.camera.position.set(0, 0.5, 2.5);
+        
+        // Mobile-specific camera adjustments
+        if (window.innerWidth <= 768) {
+            this.camera.position.set(0, 0.3, 2.8); // Slightly further back on mobile
+        }
     }
 
     setupRenderer() {
@@ -175,9 +178,21 @@ class InteractiveBabyCharacter {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.screenSpacePanning = false;
-        this.controls.minDistance = CONFIG.CAMERA.MIN_DISTANCE;
-        this.controls.maxDistance = CONFIG.CAMERA.MAX_DISTANCE;
+        
+        // Disable zoom in/out - only allow rotation
+        this.controls.enableZoom = false;
+        this.controls.enablePan = false;
+        
+        // Set fixed distance for mobile-friendly viewing
+        this.controls.minDistance = 2.5;
+        this.controls.maxDistance = 2.5;
         this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
+        
+        // Mobile-specific settings
+        if (window.innerWidth <= 768) {
+            this.controls.enableDamping = false; // Disable damping on mobile for better performance
+            this.controls.rotateSpeed = 0.8; // Slightly slower rotation on mobile
+        }
     }
 
     setupSpeechRecognition() {
@@ -257,6 +272,21 @@ class InteractiveBabyCharacter {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Adjust camera position for mobile
+            if (window.innerWidth <= 768) {
+                this.camera.position.set(0, 0.3, 2.8);
+                if (this.controls) {
+                    this.controls.enableDamping = false;
+                    this.controls.rotateSpeed = 0.8;
+                }
+            } else {
+                this.camera.position.set(0, 0.5, 2.5);
+                if (this.controls) {
+                    this.controls.enableDamping = true;
+                    this.controls.rotateSpeed = 1.0;
+                }
+            }
         });
     }
 
@@ -1158,11 +1188,12 @@ class InteractiveBabyCharacter {
     }
 
     resetCamera() {
-        this.camera.position.set(
-            CONFIG.CAMERA.INITIAL_POSITION.x,
-            CONFIG.CAMERA.INITIAL_POSITION.y,
-            CONFIG.CAMERA.INITIAL_POSITION.z
-        );
+        // Reset camera to mobile-friendly position
+        if (window.innerWidth <= 768) {
+            this.camera.position.set(0, 0.3, 2.8);
+        } else {
+            this.camera.position.set(0, 0.5, 2.5);
+        }
         this.controls.reset();
     }
 
