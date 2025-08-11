@@ -10,45 +10,67 @@
 
 class ProfessionalBabyCharacter {
     constructor() {
-        // Core Three.js components
-        this.scene = null;
-        this.camera = null;
-        this.renderer = null;
-        this.controls = null;
-        this.babyModel = null;
-        this.mixer = null;
-        this.clock = new THREE.Clock();
+        try {
+            console.log('🔍 Constructor starting...');
+            console.log('🔍 THREE available:', typeof THREE);
+            console.log('🔍 ProfessionalLipSyncSystem available:', typeof ProfessionalLipSyncSystem);
+            
+            // Core Three.js components
+            this.scene = null;
+            this.camera = null;
+            this.renderer = null;
+            this.controls = null;
+            this.babyModel = null;
+            this.mixer = null;
+            this.clock = new THREE.Clock();
 
-        // Professional lip-sync system
-        this.lipSyncSystem = new ProfessionalLipSyncSystem();
-        
-        // Audio components
-        this.audioContext = null;
-        this.audioElement = null;
-        this.currentAudioUrl = null;
-        this.currentText = null;
-        
-        // Character state
-        this.isSpeaking = false;
-        this.morphTargets = {};
-        this.mainMesh = null;
-        
-        // Speech recognition
-        this.recognition = null;
-        this.isRecording = false;
-        
-        // Speech display
-        this.speechDisplay = null;
-        this.currentUserSpeech = '';
-        this.currentBabySpeech = '';
-        
-        // Animation system
-        this.lipSyncTimeouts = [];
-        this.currentViseme = null;
-        this.visemeTransitionDuration = 0.1;
-        
-        // Initialize the application
-        this.init();
+            // Professional lip-sync system
+            if (typeof ProfessionalLipSyncSystem === 'undefined') {
+                throw new Error('ProfessionalLipSyncSystem class not found. Check if phoneme-detector.js is loaded.');
+            }
+            this.lipSyncSystem = new ProfessionalLipSyncSystem();
+            console.log('✅ Lip-sync system initialized');
+            
+            // Audio components
+            this.audioContext = null;
+            this.audioElement = null;
+            this.currentAudioUrl = null;
+            this.currentText = null;
+            
+            // Character state
+            this.isSpeaking = false;
+            this.morphTargets = {};
+            this.mainMesh = null;
+            
+            // Speech recognition
+            this.recognition = null;
+            this.isRecording = false;
+            
+            // Speech display
+            this.speechDisplay = null;
+            this.currentUserSpeech = '';
+            this.currentBabySpeech = '';
+            
+            // Animation system
+            this.lipSyncTimeouts = [];
+            this.currentViseme = null;
+            this.visemeTransitionDuration = 0.1;
+            
+            console.log('✅ Constructor completed successfully');
+            
+            // Initialize the application
+            this.init();
+            
+        } catch (error) {
+            console.error('❌ Constructor failed:', error);
+            document.getElementById('loading').innerHTML = `
+                <div style="text-align: center; padding: 20px; color: white;">
+                    <h3>❌ Initialization Failed</h3>
+                    <p>Error: ${error.message}</p>
+                    <p>Please check the browser console for details.</p>
+                </div>
+            `;
+        }
     }
 
     /**
