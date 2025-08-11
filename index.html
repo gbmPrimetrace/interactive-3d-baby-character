@@ -18,19 +18,29 @@
             font-family: 'Arial', sans-serif;
             background: #1a1a1a;
             overflow: hidden;
+            min-height: 100vh;
+        }
+
+        html {
+            background: #1a1a1a;
         }
 
         #container {
             position: relative;
             width: 100vw;
             height: 100vh;
+            background: #1a1a1a;
         }
 
         #canvas {
             display: block;
             width: 100%;
             height: 100%;
-            background: #1a1a1a;
+            background: #1a1a1a !important;
+        }
+
+        canvas {
+            background: #1a1a1a !important;
         }
 
         #ui {
@@ -45,7 +55,7 @@
         #status {
             padding: 10px 20px;
             border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: #808080;
             color: white;
             font-size: 14px;
         }
@@ -55,28 +65,14 @@
             top: 20px;
             right: 20px;
             z-index: 100;
-            max-width: 120px;
-            max-height: 90px;
-            overflow-y: auto;
+            max-width: 200px;
+            max-height: 200px;
+            overflow: visible;
             padding-right: 10px;
         }
 
         #speech-display::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #speech-display::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-        }
-
-        #speech-display::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-
-        #speech-display::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+            display: none;
         }
 
         .speech-bubble {
@@ -214,24 +210,91 @@
             display: none !important;
         }
 
+        /* Mobile touch improvements */
+        @media (max-width: 768px) {
+            button {
+                min-height: 44px;
+                min-width: 44px;
+                touch-action: manipulation;
+            }
+            
+            #micButton {
+                touch-action: manipulation;
+            }
+            
+            #resetButton {
+                touch-action: manipulation;
+            }
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             #ui {
-                top: 10px;
-                left: 10px;
+                top: 15px;
+                left: 15px;
                 font-size: 14px;
             }
 
             #status {
                 padding: 8px 16px;
                 font-size: 12px;
+                background: #666666;
+            }
+
+            #speech-display {
+                top: 15px;
+                right: 15px;
+                max-width: 180px;
+                max-height: 180px;
+            }
+
+            .speech-bubble {
+                padding: 6px 8px;
+                font-size: 10px;
+                margin-bottom: 6px;
+            }
+
+            #controls {
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                gap: 15px;
+            }
+
+            #micButton {
+                width: 75px;
+                height: 75px;
+                font-size: 30px;
+            }
+
+            #resetButton {
+                font-size: 13px;
+                padding: 8px 16px;
+            }
+
+            #loading {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #ui {
+                top: 10px;
+                left: 10px;
+                font-size: 12px;
+            }
+
+            #status {
+                padding: 6px 12px;
+                font-size: 11px;
+                background: #666666;
             }
 
             #speech-display {
                 top: 10px;
                 right: 10px;
-                max-width: 90px;
-                max-height: 72px;
+                max-width: 140px;
+                max-height: 140px;
             }
 
             .speech-bubble {
@@ -241,7 +304,9 @@
             }
 
             #controls {
-                bottom: 30px;
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
                 gap: 20px;
             }
 
@@ -252,78 +317,38 @@
             }
 
             #resetButton {
-                font-size: 12px;
-                padding: 6px 12px;
-            }
-
-            #loading {
-                font-size: 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #ui {
-                top: 5px;
-                left: 5px;
-                font-size: 12px;
-            }
-
-            #status {
-                padding: 6px 12px;
                 font-size: 11px;
-            }
-
-            #speech-display {
-                top: 5px;
-                right: 5px;
-                max-width: 72px;
-                max-height: 60px;
-            }
-
-            .speech-bubble {
-                padding: 3px 5px;
-                font-size: 7px;
-                margin-bottom: 3px;
-            }
-
-            #controls {
-                bottom: 40px;
-                gap: 25px;
-            }
-
-            #micButton {
-                width: 65px;
-                height: 65px;
-                font-size: 26px;
-            }
-
-            #resetButton {
-                font-size: 11px;
-                padding: 5px 10px;
+                padding: 6px 12px;
             }
         }
 
         /* Landscape orientation adjustments */
         @media (max-height: 500px) and (orientation: landscape) {
             #ui {
-                top: 5px;
-                left: 5px;
+                top: 8px;
+                left: 8px;
+            }
+
+            #status {
+                background: #666666;
             }
 
             #speech-display {
-                top: 5px;
-                max-height: 48px;
+                top: 8px;
+                max-height: 120px;
             }
 
             #controls {
-                bottom: 15px;
-                gap: 15px;
+                bottom: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                gap: 12px;
             }
 
             #micButton {
-                width: 60px;
-                height: 60px;
-                font-size: 24px;
+                width: 65px;
+                height: 65px;
+                font-size: 26px;
             }
         }
     </style>
