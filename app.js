@@ -185,14 +185,14 @@ class InteractiveBabyCharacter {
 
         // Set reasonable distance limits for zooming
         this.controls.minDistance = 3.5;
-        this.controls.maxDistance = 5;
+        this.controls.maxDistance = 5.0;
         this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
 
-       /* // Mobile-specific settings
+        // Mobile-specific settings
         if (window.innerWidth <= 768) {
             this.controls.enableDamping = false; // Disable damping on mobile for better performance
             this.controls.rotateSpeed = 0.8; // Slightly slower rotation on mobile
-        }*/
+        }
     }
 
     setupSpeechRecognition() {
@@ -359,7 +359,7 @@ class InteractiveBabyCharacter {
         this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y - 1, // Move down by 20 units in Y axis
+            CONFIG.SCENE.MODEL_POSITION.y, // Move down by 1 units in Y axis5
             CONFIG.SCENE.MODEL_POSITION.z
         );
 
@@ -371,6 +371,10 @@ class InteractiveBabyCharacter {
                 // Check if this is the body mesh (by name or material properties)
                 const isBodyMesh = child.name.toLowerCase().includes('body') ||
                     (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
+
+                // Check if this is the hair mesh (by name or material properties)
+                const isHairMesh = child.name.toLowerCase().includes('hair') ||
+                    (child.material && child.material.name && child.material.name.toLowerCase().includes('hair'));
 
                 if (isBodyMesh) {
                     // Load alpha map for body mesh with fallback paths
