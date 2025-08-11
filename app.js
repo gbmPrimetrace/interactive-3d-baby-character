@@ -103,8 +103,8 @@ class InteractiveBabyCharacter {
                             // Generate environment map from HDRI and set it directly
                             this.scene.environment = pmremGenerator.fromEquirectangular(hdriTexture).texture;
 
-                            // Set background to white (this is just visual, doesn't affect lighting)
-                            this.scene.background = new THREE.Color(0xffffff);
+                            // Set background to dark for better contrast with the model
+                            this.scene.background = new THREE.Color(0x1a1a1a);
 
                             console.log('✅ HDRI loaded successfully from:', path);
                             console.log('Environment map set:', this.scene.environment);
@@ -356,92 +356,48 @@ class InteractiveBabyCharacter {
         this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y, // Move down by 1 units in Y axis5
+            CONFIG.SCENE.MODEL_POSITION.y - 20, // Move down by 20 units in Y axis
             CONFIG.SCENE.MODEL_POSITION.z
         );
 
-        // Apply MeshStandardMaterial to all meshes and enable shadows
+        // Create texture loader for all materials
+        const textureLoader = new THREE.TextureLoader();
+
+        // Apply specialized materials based on mesh type
         this.babyModel.traverse((child) => {
             if (child.isMesh) {
-                let standardMaterial;
+                let material;
+                const meshName = child.name.toLowerCase();
+                const materialName = child.material?.name?.toLowerCase() || '';
 
-                // Check if this is the body mesh (by name or material properties)
-                const isBodyMesh = child.name.toLowerCase().includes('body') ||
-                    (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
+                // Determine mesh type
+                const isBodyMesh = meshName.includes('body') || materialName.includes('body');
+                const isHairMesh = meshName.includes('hair') || materialName.includes('hair');
+                const isClothesMesh = meshName.includes('clothes') || materialName.includes('clothes') || 
+                                    meshName.includes('shirt') || meshName.includes('pants');
+                const isEyeMesh = meshName.includes('eye') || materialName.includes('eye');
 
-
+                console.log(`🔍 Processing mesh: ${child.name} (Type: ${isBodyMesh ? 'Body' : isHairMesh ? 'Hair' : isClothesMesh ? 'Clothes' : isEyeMesh ? 'Eye' : 'Other'})`);
 
                 if (isBodyMesh) {
-                    // Load alpha map for body mesh with fallback paths
-                    const textureLoader = new THREE.TextureLoader();
-
-                    // Try multiple possible paths for GitHub Pages compatibility
-                    const alphaMapPaths = [
-                        'src/body__Opacity.jpg',
-                        './src/body__Opacity.jpg',
-                        'body__Opacity.jpg',
-                        './body__Opacity.jpg'
-                    ];
-
-                    // Load alpha map synchronously
-                    let alphaMap = null;
-                    for (let i = 0; i < alphaMapPaths.length; i++) {
-                        try {
-                            const path = alphaMapPaths[i];
-                            console.log(`Trying to load alpha map from: ${path}`);
-
-                            // Use synchronous loading for immediate access
-                            alphaMap = textureLoader.load(path);
-                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
-                            break;
-                        } catch (error) {
-                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
-                            if (i === alphaMapPaths.length - 1) {
-                                console.warn('Failed to load alpha map from all possible paths');
-                            }
-                        }
-                    }
-
-                    standardMaterial = new THREE.MeshStandardMaterial({
-                        color: child.material.color || 0xffffff,
-                        map: child.material.map || null,
-                        normalMap: child.material.normalMap || null,
-                        roughnessMap: child.material.roughnessMap || null,
-                        aoMap: child.material.aoMap || null,
-                        alphaMap: alphaMap,
-                        alphaTest: 0.5,
-                        transparent: true,
-                        side: THREE.DoubleSide,
-                        roughness: 0.5,
-                        metalness: 0.1
-                    });
-
-                    // Debug alpha map setup
-                    if (alphaMap) {
-                        console.log(`✅ Alpha map applied to ${child.name}:`, alphaMap);
-                        console.log(`   - Alpha map image:`, alphaMap.image);
-                        console.log(`   - Material transparent:`, standardMaterial.transparent);
-                        console.log(`   - Material alphaTest:`, standardMaterial.alphaTest);
-                    } else {
-                        console.warn(`⚠️ No alpha map loaded for ${child.name}`);
-                    }
+                    // Body mesh with alpha map for transparency
+                    material = this.createBodyMaterial(child, textureLoader);
+                } else if (isHairMesh) {
+                    // Hair mesh with specialized hair material
+                    material = this.createHairMaterial(child, textureLoader);
+                } else if (isClothesMesh) {
+                    // Clothes mesh with normal maps and roughness
+                    material = this.createClothesMaterial(child, textureLoader);
+                } else if (isEyeMesh) {
+                    // Eye mesh with special properties
+                    material = this.createEyeMaterial(child, textureLoader);
                 } else {
-                    // Apply standard material for other meshes
-                    standardMaterial = new THREE.MeshStandardMaterial({
-                        color: child.material.color || 0xffffff,
-                        map: child.material.map || null,
-                        normalMap: child.material.normalMap || null,
-                        roughnessMap: child.material.roughnessMap || null,
-                        aoMap: child.material.aoMap || null,
-                        opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                        transparent: child.material.transparent || false,
-                        roughness: 0.5,
-                        metalness: 0.1
-                    });
+                    // Default material for other meshes
+                    material = this.createDefaultMaterial(child);
                 }
 
-                child.material = standardMaterial;
-                // No shadows with HDRI lighting
+                // Apply the material
+                child.material = material;
 
                 // Store morph targets for lip sync (use the mesh with the most morph targets - the main face mesh)
                 if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 50) {
@@ -451,14 +407,14 @@ class InteractiveBabyCharacter {
                     // Ensure the material supports morph targets
                     if (child.material) {
                         child.material.morphTargets = true;
-                        console.log('Enabled morph targets on material for mesh:', child.name);
+                        console.log('✅ Enabled morph targets on material for mesh:', child.name);
                     }
 
-                    console.log('Found main morph target mesh:', child.name);
-                    console.log('Available morph targets:', Object.keys(child.morphTargetDictionary));
-                    console.log('Available morph targets from phoneme detector:', this.phonemeDetector.getAvailableMorphTargets());
-                    console.log('Mesh has morphTargetInfluences:', child.morphTargetInfluences ? 'Yes' : 'No');
-                    console.log('Number of morph target influences:', child.morphTargetInfluences ? child.morphTargetInfluences.length : 'None');
+                    console.log('🎯 Found main morph target mesh:', child.name);
+                    console.log('📊 Available morph targets:', Object.keys(child.morphTargetDictionary));
+                    console.log('🔊 Available morph targets from phoneme detector:', this.phonemeDetector.getAvailableMorphTargets());
+                    console.log('📐 Mesh has morphTargetInfluences:', child.morphTargetInfluences ? 'Yes' : 'No');
+                    console.log('🔢 Number of morph target influences:', child.morphTargetInfluences ? child.morphTargetInfluences.length : 'None');
                 }
             }
         });
@@ -471,6 +427,247 @@ class InteractiveBabyCharacter {
         }
 
         this.scene.add(this.babyModel);
+    }
+
+    // ===== MATERIAL CREATION METHODS =====
+
+    createBodyMaterial(mesh, textureLoader) {
+        console.log('🎨 Creating body material for:', mesh.name);
+        
+        // Load body textures with fallback paths
+        const alphaMap = this.loadTextureSafely(textureLoader, [
+            'src/body__Opacity.jpg',
+            './src/body__Opacity.jpg',
+            'body__Opacity.jpg',
+            './body__Opacity.jpg'
+        ], 'body alpha map');
+
+        const diffuseMap = this.loadTextureSafely(textureLoader, [
+            'src/body_Diffuse.jpg',
+            './src/body_Diffuse.jpg',
+            'body_Diffuse.jpg',
+            './body_Diffuse.jpg'
+        ], 'body diffuse map');
+
+        const normalMap = this.loadTextureSafely(textureLoader, [
+            'src/body__AO.jpg',
+            './src/body__AO.jpg',
+            'body__AO.jpg',
+            './body__AO.jpg'
+        ], 'body AO map');
+
+        const roughnessMap = this.loadTextureSafely(textureLoader, [
+            'src/body_Roughness.jpg',
+            './src/body_Roughness.jpg',
+            'body_Roughness.jpg',
+            './body_Roughness.jpg'
+        ], 'body roughness map');
+
+        const material = new THREE.MeshStandardMaterial({
+            color: mesh.material?.color || 0xffffff,
+            map: diffuseMap,
+            normalMap: normalMap,
+            roughnessMap: roughnessMap,
+            alphaMap: alphaMap,
+            alphaTest: 0.5,
+            transparent: true,
+            side: THREE.DoubleSide,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+
+        console.log(`✅ Body material created for ${mesh.name}:`, {
+            hasAlphaMap: !!alphaMap,
+            hasDiffuseMap: !!diffuseMap,
+            hasNormalMap: !!normalMap,
+            hasRoughnessMap: !!roughnessMap,
+            transparent: material.transparent,
+            alphaTest: material.alphaTest
+        });
+
+        return material;
+    }
+
+    createHairMaterial(mesh, textureLoader) {
+        console.log('💇 Creating hair material for:', mesh.name);
+        
+        // Load hair textures with fallback paths
+        const diffuseMap = this.loadTextureSafely(textureLoader, [
+            'src/hair_Diffuse.jpg',
+            './src/hair_Diffuse.jpg',
+            'hair_Diffuse.jpg',
+            './hair_Diffuse.jpg'
+        ], 'hair diffuse map');
+
+        const opacityMap = this.loadTextureSafely(textureLoader, [
+            'src/hair_Opacity.jpg',
+            './src/hair_Opacity.jpg',
+            'hair_Opacity.jpg',
+            './hair_Opacity.jpg'
+        ], 'hair opacity map');
+
+        const specularMap = this.loadTextureSafely(textureLoader, [
+            'src/hair_Specular.jpg',
+            './src/hair_Specular.jpg',
+            'hair_Specular.jpg',
+            './hair_Specular.jpg'
+        ], 'hair specular map');
+
+        const aoMap = this.loadTextureSafely(textureLoader, [
+            'src/hair_AO.jpg',
+            './src/hair_AO.jpg',
+            'hair_AO.jpg',
+            './hair_AO.jpg'
+        ], 'hair AO map');
+
+        const material = new THREE.MeshStandardMaterial({
+            color: mesh.material?.color || 0x8B4513, // Default brown color for hair
+            map: diffuseMap,
+            alphaMap: opacityMap,
+            alphaTest: 0.1,
+            transparent: true,
+            side: THREE.DoubleSide,
+            roughness: 0.9,
+            metalness: 0.0,
+            envMapIntensity: 0.3
+        });
+
+        console.log(`✅ Hair material created for ${mesh.name}:`, {
+            hasDiffuseMap: !!diffuseMap,
+            hasOpacityMap: !!opacityMap,
+            hasSpecularMap: !!specularMap,
+            hasAOMap: !!aoMap,
+            transparent: material.transparent,
+            alphaTest: material.alphaTest,
+            roughness: material.roughness
+        });
+
+        return material;
+    }
+
+    createClothesMaterial(mesh, textureLoader) {
+        console.log('👕 Creating clothes material for:', mesh.name);
+        
+        // Load clothes textures with fallback paths
+        const diffuseMap = this.loadTextureSafely(textureLoader, [
+            'src/clothes_Diffuse.jpg',
+            './src/clothes_Diffuse.jpg',
+            'clothes_Diffuse.jpg',
+            './clothes_Diffuse.jpg'
+        ], 'clothes diffuse map');
+
+        const normalMap = this.loadTextureSafely(textureLoader, [
+            'src/clothes_Normal.jpg',
+            './src/clothes_Normal.jpg',
+            'clothes_Normal.jpg',
+            './clothes_Normal.jpg'
+        ], 'clothes normal map');
+
+        const roughnessMap = this.loadTextureSafely(textureLoader, [
+            'src/clothes_Roughness.jpg',
+            './src/clothes_Roughness.jpg',
+            'clothes_Roughness.jpg',
+            './clothes_Roughness.jpg'
+        ], 'clothes roughness map');
+
+        const aoMap = this.loadTextureSafely(textureLoader, [
+            'src/clothes_AO.jpg',
+            './src/clothes_AO.jpg',
+            'clothes_AO.jpg',
+            './clothes_AO.jpg'
+        ], 'clothes AO map');
+
+        const material = new THREE.MeshStandardMaterial({
+            color: mesh.material?.color || 0xffffff,
+            map: diffuseMap,
+            normalMap: normalMap,
+            roughnessMap: roughnessMap,
+            aoMap: aoMap,
+            transparent: false,
+            side: THREE.FrontSide,
+            roughness: 0.7,
+            metalness: 0.0
+        });
+
+        console.log(`✅ Clothes material created for ${mesh.name}:`, {
+            hasDiffuseMap: !!diffuseMap,
+            hasNormalMap: !!normalMap,
+            hasRoughnessMap: !!roughnessMap,
+            hasAOMap: !!aoMap,
+            transparent: material.transparent,
+            roughness: material.roughness
+        });
+
+        return material;
+    }
+
+    createEyeMaterial(mesh, textureLoader) {
+        console.log('👁️ Creating eye material for:', mesh.name);
+        
+        // Load eye textures with fallback paths
+        const diffuseMap = this.loadTextureSafely(textureLoader, [
+            'src/eye_Diffuse.jpg',
+            './src/eye_Diffuse.jpg',
+            'eye_Diffuse.jpg',
+            './eye_Diffuse.jpg'
+        ], 'eye diffuse map');
+
+        const material = new THREE.MeshStandardMaterial({
+            color: mesh.material?.color || 0x000000,
+            map: diffuseMap,
+            transparent: false,
+            side: THREE.FrontSide,
+            roughness: 0.1,
+            metalness: 0.0,
+            envMapIntensity: 1.0
+        });
+
+        console.log(`✅ Eye material created for ${mesh.name}:`, {
+            hasDiffuseMap: !!diffuseMap,
+            transparent: material.transparent,
+            roughness: material.roughness,
+            envMapIntensity: material.envMapIntensity
+        });
+
+        return material;
+    }
+
+    createDefaultMaterial(mesh) {
+        console.log('🔧 Creating default material for:', mesh.name);
+        
+        const material = new THREE.MeshStandardMaterial({
+            color: mesh.material?.color || 0xffffff,
+            map: mesh.material?.map || null,
+            normalMap: mesh.material?.normalMap || null,
+            roughnessMap: mesh.material?.roughnessMap || null,
+            aoMap: mesh.material?.aoMap || null,
+            opacity: mesh.material?.opacity !== undefined ? mesh.material.opacity : 1,
+            transparent: mesh.material?.transparent || false,
+            roughness: 0.5,
+            metalness: 0.1
+        });
+
+        console.log(`✅ Default material created for ${mesh.name}`);
+        return material;
+    }
+
+    loadTextureSafely(textureLoader, paths, textureName) {
+        for (let i = 0; i < paths.length; i++) {
+            try {
+                const path = paths[i];
+                console.log(`🔄 Trying to load ${textureName} from: ${path}`);
+                
+                const texture = textureLoader.load(path);
+                console.log(`✅ ${textureName} loaded successfully from: ${path}`);
+                return texture;
+            } catch (error) {
+                console.warn(`❌ Failed to load ${textureName} from ${paths[i]}:`, error);
+                if (i === paths.length - 1) {
+                    console.warn(`⚠️ Failed to load ${textureName} from all possible paths`);
+                }
+            }
+        }
+        return null;
     }
 
     async startRecording() {
