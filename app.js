@@ -360,7 +360,7 @@ class InteractiveBabyCharacter {
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
             CONFIG.SCENE.MODEL_POSITION.y,
-            CONFIG.SCENE.MODEL_POSITION.z
+            CONFIG.SCENE.MODEL_POSITION.z - 50  // Move down by 50 units in Z axis
         );
 
         // Apply MeshStandardMaterial to all meshes and enable shadows
