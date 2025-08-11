@@ -103,8 +103,8 @@ class InteractiveBabyCharacter {
                             // Generate environment map from HDRI and set it directly
                             this.scene.environment = pmremGenerator.fromEquirectangular(hdriTexture).texture;
 
-                            // Set background to dark for better contrast with the model
-                            this.scene.background = new THREE.Color(0x1a1a1a);
+                            // Set background to white (this is just visual, doesn't affect lighting)
+                            this.scene.background = new THREE.Color(0xffffff);
 
                             console.log('✅ HDRI loaded successfully from:', path);
                             console.log('Environment map set:', this.scene.environment);
@@ -356,48 +356,92 @@ class InteractiveBabyCharacter {
         this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y - 20, // Move down by 20 units in Y axis
+            CONFIG.SCENE.MODEL_POSITION.y, // Move down by 1 units in Y axis5
             CONFIG.SCENE.MODEL_POSITION.z
         );
 
-        // Create texture loader for all materials
-        const textureLoader = new THREE.TextureLoader();
-
-        // Apply specialized materials based on mesh type
+        // Apply MeshStandardMaterial to all meshes and enable shadows
         this.babyModel.traverse((child) => {
             if (child.isMesh) {
-                let material;
-                const meshName = child.name.toLowerCase();
-                const materialName = child.material?.name?.toLowerCase() || '';
+                let standardMaterial;
 
-                // Determine mesh type
-                const isBodyMesh = meshName.includes('body') || materialName.includes('body');
-                const isHairMesh = meshName.includes('hair') || materialName.includes('hair');
-                const isClothesMesh = meshName.includes('clothes') || materialName.includes('clothes') || 
-                                    meshName.includes('shirt') || meshName.includes('pants');
-                const isEyeMesh = meshName.includes('eye') || materialName.includes('eye');
+                // Check if this is the body mesh (by name or material properties)
+                const isBodyMesh = child.name.toLowerCase().includes('body') ||
+                    (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
 
-                console.log(`🔍 Processing mesh: ${child.name} (Type: ${isBodyMesh ? 'Body' : isHairMesh ? 'Hair' : isClothesMesh ? 'Clothes' : isEyeMesh ? 'Eye' : 'Other'})`);
+
 
                 if (isBodyMesh) {
-                    // Body mesh with alpha map for transparency
-                    material = this.createBodyMaterial(child, textureLoader);
-                } else if (isHairMesh) {
-                    // Hair mesh with specialized hair material
-                    material = this.createHairMaterial(child, textureLoader);
-                } else if (isClothesMesh) {
-                    // Clothes mesh with normal maps and roughness
-                    material = this.createClothesMaterial(child, textureLoader);
-                } else if (isEyeMesh) {
-                    // Eye mesh with special properties
-                    material = this.createEyeMaterial(child, textureLoader);
+                    // Load alpha map for body mesh with fallback paths
+                    const textureLoader = new THREE.TextureLoader();
+
+                    // Try multiple possible paths for GitHub Pages compatibility
+                    const alphaMapPaths = [
+                        'src/body__Opacity.jpg',
+                        './src/body__Opacity.jpg',
+                        'body__Opacity.jpg',
+                        './body__Opacity.jpg'
+                    ];
+
+                    // Load alpha map synchronously
+                    let alphaMap = null;
+                    for (let i = 0; i < alphaMapPaths.length; i++) {
+                        try {
+                            const path = alphaMapPaths[i];
+                            console.log(`Trying to load alpha map from: ${path}`);
+
+                            // Use synchronous loading for immediate access
+                            alphaMap = textureLoader.load(path);
+                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
+                            break;
+                        } catch (error) {
+                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
+                            if (i === alphaMapPaths.length - 1) {
+                                console.warn('Failed to load alpha map from all possible paths');
+                            }
+                        }
+                    }
+
+                    standardMaterial = new THREE.MeshStandardMaterial({
+                        color: child.material.color || 0xffffff,
+                        map: child.material.map || null,
+                        normalMap: child.material.normalMap || null,
+                        roughnessMap: child.material.roughnessMap || null,
+                        aoMap: child.material.aoMap || null,
+                        alphaMap: alphaMap,
+                        alphaTest: 0.5,
+                        transparent: true,
+                        side: THREE.DoubleSide,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
+
+                    // Debug alpha map setup
+                    if (alphaMap) {
+                        console.log(`✅ Alpha map applied to ${child.name}:`, alphaMap);
+                        console.log(`   - Alpha map image:`, alphaMap.image);
+                        console.log(`   - Material transparent:`, standardMaterial.transparent);
+                        console.log(`   - Material alphaTest:`, standardMaterial.alphaTest);
+                    } else {
+                        console.warn(`⚠️ No alpha map loaded for ${child.name}`);
+                    }
                 } else {
-                    // Default material for other meshes
-                    material = this.createDefaultMaterial(child);
+                    // Apply standard material for other meshes
+                    standardMaterial = new THREE.MeshStandardMaterial({
+                        color: child.material.color || 0xffffff,
+                        map: child.material.map || null,
+                        normalMap: child.material.normalMap || null,
+                        roughnessMap: child.material.roughnessMap || null,
+                        aoMap: child.material.aoMap || null,
+                        opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
+                        transparent: child.material.transparent || false,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
                 }
 
-                // Apply the material
-                child.material = material;
+                child.material = standardMaterial;
+                // No shadows with HDRI lighting
 
                 // Store morph targets for lip sync (use the mesh with the most morph targets - the main face mesh)
                 if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 50) {
@@ -407,14 +451,14 @@ class InteractiveBabyCharacter {
                     // Ensure the material supports morph targets
                     if (child.material) {
                         child.material.morphTargets = true;
-                        console.log('✅ Enabled morph targets on material for mesh:', child.name);
+                        console.log('Enabled morph targets on material for mesh:', child.name);
                     }
 
-                    console.log('🎯 Found main morph target mesh:', child.name);
-                    console.log('📊 Available morph targets:', Object.keys(child.morphTargetDictionary));
-                    console.log('🔊 Available morph targets from phoneme detector:', this.phonemeDetector.getAvailableMorphTargets());
-                    console.log('📐 Mesh has morphTargetInfluences:', child.morphTargetInfluences ? 'Yes' : 'No');
-                    console.log('🔢 Number of morph target influences:', child.morphTargetInfluences ? child.morphTargetInfluences.length : 'None');
+                    console.log('Found main morph target mesh:', child.name);
+                    console.log('Available morph targets:', Object.keys(child.morphTargetDictionary));
+                    console.log('Available morph targets from phoneme detector:', this.phonemeDetector.getAvailableMorphTargets());
+                    console.log('Mesh has morphTargetInfluences:', child.morphTargetInfluences ? 'Yes' : 'No');
+                    console.log('Number of morph target influences:', child.morphTargetInfluences ? child.morphTargetInfluences.length : 'None');
                 }
             }
         });
@@ -427,247 +471,6 @@ class InteractiveBabyCharacter {
         }
 
         this.scene.add(this.babyModel);
-    }
-
-    // ===== MATERIAL CREATION METHODS =====
-
-    createBodyMaterial(mesh, textureLoader) {
-        console.log('🎨 Creating body material for:', mesh.name);
-        
-        // Load body textures with fallback paths
-        const alphaMap = this.loadTextureSafely(textureLoader, [
-            'src/body__Opacity.jpg',
-            './src/body__Opacity.jpg',
-            'body__Opacity.jpg',
-            './body__Opacity.jpg'
-        ], 'body alpha map');
-
-        const diffuseMap = this.loadTextureSafely(textureLoader, [
-            'src/body_Diffuse.jpg',
-            './src/body_Diffuse.jpg',
-            'body_Diffuse.jpg',
-            './body_Diffuse.jpg'
-        ], 'body diffuse map');
-
-        const normalMap = this.loadTextureSafely(textureLoader, [
-            'src/body__AO.jpg',
-            './src/body__AO.jpg',
-            'body__AO.jpg',
-            './body__AO.jpg'
-        ], 'body AO map');
-
-        const roughnessMap = this.loadTextureSafely(textureLoader, [
-            'src/body_Roughness.jpg',
-            './src/body_Roughness.jpg',
-            'body_Roughness.jpg',
-            './body_Roughness.jpg'
-        ], 'body roughness map');
-
-        const material = new THREE.MeshStandardMaterial({
-            color: mesh.material?.color || 0xffffff,
-            map: diffuseMap,
-            normalMap: normalMap,
-            roughnessMap: roughnessMap,
-            alphaMap: alphaMap,
-            alphaTest: 0.5,
-            transparent: true,
-            side: THREE.DoubleSide,
-            roughness: 0.8,
-            metalness: 0.1
-        });
-
-        console.log(`✅ Body material created for ${mesh.name}:`, {
-            hasAlphaMap: !!alphaMap,
-            hasDiffuseMap: !!diffuseMap,
-            hasNormalMap: !!normalMap,
-            hasRoughnessMap: !!roughnessMap,
-            transparent: material.transparent,
-            alphaTest: material.alphaTest
-        });
-
-        return material;
-    }
-
-    createHairMaterial(mesh, textureLoader) {
-        console.log('💇 Creating hair material for:', mesh.name);
-        
-        // Load hair textures with fallback paths
-        const diffuseMap = this.loadTextureSafely(textureLoader, [
-            'src/hair_Diffuse.jpg',
-            './src/hair_Diffuse.jpg',
-            'hair_Diffuse.jpg',
-            './hair_Diffuse.jpg'
-        ], 'hair diffuse map');
-
-        const opacityMap = this.loadTextureSafely(textureLoader, [
-            'src/hair_Opacity.jpg',
-            './src/hair_Opacity.jpg',
-            'hair_Opacity.jpg',
-            './hair_Opacity.jpg'
-        ], 'hair opacity map');
-
-        const specularMap = this.loadTextureSafely(textureLoader, [
-            'src/hair_Specular.jpg',
-            './src/hair_Specular.jpg',
-            'hair_Specular.jpg',
-            './hair_Specular.jpg'
-        ], 'hair specular map');
-
-        const aoMap = this.loadTextureSafely(textureLoader, [
-            'src/hair_AO.jpg',
-            './src/hair_AO.jpg',
-            'hair_AO.jpg',
-            './hair_AO.jpg'
-        ], 'hair AO map');
-
-        const material = new THREE.MeshStandardMaterial({
-            color: mesh.material?.color || 0x8B4513, // Default brown color for hair
-            map: diffuseMap,
-            alphaMap: opacityMap,
-            alphaTest: 0.1,
-            transparent: true,
-            side: THREE.DoubleSide,
-            roughness: 0.9,
-            metalness: 0.0,
-            envMapIntensity: 0.3
-        });
-
-        console.log(`✅ Hair material created for ${mesh.name}:`, {
-            hasDiffuseMap: !!diffuseMap,
-            hasOpacityMap: !!opacityMap,
-            hasSpecularMap: !!specularMap,
-            hasAOMap: !!aoMap,
-            transparent: material.transparent,
-            alphaTest: material.alphaTest,
-            roughness: material.roughness
-        });
-
-        return material;
-    }
-
-    createClothesMaterial(mesh, textureLoader) {
-        console.log('👕 Creating clothes material for:', mesh.name);
-        
-        // Load clothes textures with fallback paths
-        const diffuseMap = this.loadTextureSafely(textureLoader, [
-            'src/clothes_Diffuse.jpg',
-            './src/clothes_Diffuse.jpg',
-            'clothes_Diffuse.jpg',
-            './clothes_Diffuse.jpg'
-        ], 'clothes diffuse map');
-
-        const normalMap = this.loadTextureSafely(textureLoader, [
-            'src/clothes_Normal.jpg',
-            './src/clothes_Normal.jpg',
-            'clothes_Normal.jpg',
-            './clothes_Normal.jpg'
-        ], 'clothes normal map');
-
-        const roughnessMap = this.loadTextureSafely(textureLoader, [
-            'src/clothes_Roughness.jpg',
-            './src/clothes_Roughness.jpg',
-            'clothes_Roughness.jpg',
-            './clothes_Roughness.jpg'
-        ], 'clothes roughness map');
-
-        const aoMap = this.loadTextureSafely(textureLoader, [
-            'src/clothes_AO.jpg',
-            './src/clothes_AO.jpg',
-            'clothes_AO.jpg',
-            './clothes_AO.jpg'
-        ], 'clothes AO map');
-
-        const material = new THREE.MeshStandardMaterial({
-            color: mesh.material?.color || 0xffffff,
-            map: diffuseMap,
-            normalMap: normalMap,
-            roughnessMap: roughnessMap,
-            aoMap: aoMap,
-            transparent: false,
-            side: THREE.FrontSide,
-            roughness: 0.7,
-            metalness: 0.0
-        });
-
-        console.log(`✅ Clothes material created for ${mesh.name}:`, {
-            hasDiffuseMap: !!diffuseMap,
-            hasNormalMap: !!normalMap,
-            hasRoughnessMap: !!roughnessMap,
-            hasAOMap: !!aoMap,
-            transparent: material.transparent,
-            roughness: material.roughness
-        });
-
-        return material;
-    }
-
-    createEyeMaterial(mesh, textureLoader) {
-        console.log('👁️ Creating eye material for:', mesh.name);
-        
-        // Load eye textures with fallback paths
-        const diffuseMap = this.loadTextureSafely(textureLoader, [
-            'src/eye_Diffuse.jpg',
-            './src/eye_Diffuse.jpg',
-            'eye_Diffuse.jpg',
-            './eye_Diffuse.jpg'
-        ], 'eye diffuse map');
-
-        const material = new THREE.MeshStandardMaterial({
-            color: mesh.material?.color || 0x000000,
-            map: diffuseMap,
-            transparent: false,
-            side: THREE.FrontSide,
-            roughness: 0.1,
-            metalness: 0.0,
-            envMapIntensity: 1.0
-        });
-
-        console.log(`✅ Eye material created for ${mesh.name}:`, {
-            hasDiffuseMap: !!diffuseMap,
-            transparent: material.transparent,
-            roughness: material.roughness,
-            envMapIntensity: material.envMapIntensity
-        });
-
-        return material;
-    }
-
-    createDefaultMaterial(mesh) {
-        console.log('🔧 Creating default material for:', mesh.name);
-        
-        const material = new THREE.MeshStandardMaterial({
-            color: mesh.material?.color || 0xffffff,
-            map: mesh.material?.map || null,
-            normalMap: mesh.material?.normalMap || null,
-            roughnessMap: mesh.material?.roughnessMap || null,
-            aoMap: mesh.material?.aoMap || null,
-            opacity: mesh.material?.opacity !== undefined ? mesh.material.opacity : 1,
-            transparent: mesh.material?.transparent || false,
-            roughness: 0.5,
-            metalness: 0.1
-        });
-
-        console.log(`✅ Default material created for ${mesh.name}`);
-        return material;
-    }
-
-    loadTextureSafely(textureLoader, paths, textureName) {
-        for (let i = 0; i < paths.length; i++) {
-            try {
-                const path = paths[i];
-                console.log(`🔄 Trying to load ${textureName} from: ${path}`);
-                
-                const texture = textureLoader.load(path);
-                console.log(`✅ ${textureName} loaded successfully from: ${path}`);
-                return texture;
-            } catch (error) {
-                console.warn(`❌ Failed to load ${textureName} from ${paths[i]}:`, error);
-                if (i === paths.length - 1) {
-                    console.warn(`⚠️ Failed to load ${textureName} from all possible paths`);
-                }
-            }
-        }
-        return null;
     }
 
     async startRecording() {
@@ -696,6 +499,9 @@ class InteractiveBabyCharacter {
             this.isRecording = true;
             document.getElementById('micButton').classList.add('recording');
             this.updateStatus('Listening...');
+            
+            // Start real-time microphone analysis for live lip-sync
+            this.startMicrophoneLipSync();
         }
     }
 
@@ -704,6 +510,9 @@ class InteractiveBabyCharacter {
             this.recognition.stop();
             this.isRecording = false;
             document.getElementById('micButton').classList.remove('recording');
+            
+            // Stop microphone lip-sync
+            this.stopMicrophoneLipSync();
         }
     }
 
@@ -847,9 +656,9 @@ class InteractiveBabyCharacter {
             // Now start the animation system after audio is confirmed playing
             console.log('🎭 Starting animation system...');
 
-            // Use the new non-intrusive lip-sync method that won't interfere with audio
-            console.log('🎯 Using non-intrusive lip-sync to preserve audio playback...');
-            this.startSimpleNonIntrusiveLipSync(textContent, this.audioElement.duration);
+            // Use real-time audio analysis for the best lip-sync
+            console.log('🎯 Starting real-time audio analysis for optimal lip-sync...');
+            await this.startRealTimeAudioAnalysis(this.audioElement, textContent);
 
             // Wait for audio to finish
             await new Promise((resolve) => {
@@ -942,8 +751,22 @@ class InteractiveBabyCharacter {
     }
 
     extractPhonemes(text) {
-        // Fallback method for text-based phoneme extraction
-        return this.phonemeDetector.extractPhonemes(text);
+        // Enhanced text-based phoneme extraction using the viseme system
+        const phonemes = this.phonemeDetector.extractPhonemes(text);
+        
+        // Enhance phonemes with viseme data for better animation
+        return phonemes.map(phonemeData => {
+            const visemeData = this.phonemeDetector.getVisemeData(phonemeData.phoneme);
+            
+            return {
+                ...phonemeData,
+                primaryTarget: visemeData.primary,
+                secondaryTarget: visemeData.secondary,
+                intensity: visemeData.intensity,
+                // Use the original morphTarget for backward compatibility
+                morphTarget: phonemeData.morphTarget || visemeData.primary
+            };
+        });
     }
 
     startLipSync(phonemes) {
@@ -1062,7 +885,43 @@ class InteractiveBabyCharacter {
         this.lipSyncTimeouts.push(resetTimeout);
     }
 
-    // Real-time viseme analysis from ElevenLabs audio
+    // Real-time audio analysis for optimal lip-sync
+    async startRealTimeAudioAnalysis(audioElement, textContent) {
+        if (!this.mainMesh || !this.morphTargets) {
+            console.warn('⚠️ No main mesh or morph targets available, falling back to text-based lip-sync');
+            this.startSimpleNonIntrusiveLipSync(textContent, audioElement.duration);
+            return;
+        }
+
+        console.log('🎵 Starting real-time audio analysis for optimal lip-sync...');
+
+        try {
+            // Initialize audio analysis if not already done
+            if (!this.phonemeDetector.audioContext) {
+                await this.phonemeDetector.initializeAudioAnalysis();
+            }
+
+            // Start real-time audio analysis with high refresh rate
+            await this.phonemeDetector.startRealTimeVisemeAnalysis(audioElement, (visemeData) => {
+                this.applyVisemeInRealTime(visemeData);
+            });
+
+        } catch (error) {
+            console.error('❌ Failed to start real-time audio analysis:', error);
+            console.log('🔄 Falling back to enhanced text-based lip-sync method');
+            
+            // Fallback to enhanced text-based method
+            const phonemes = this.extractPhonemes(textContent);
+            if (phonemes.length > 0) {
+                this.startEnhancedTextBasedLipSync(phonemes, audioElement.duration);
+            } else {
+                // If no phonemes, create a simple animation
+                this.startSimpleLipSync(audioElement.duration);
+            }
+        }
+    }
+
+    // Real-time viseme analysis from ElevenLabs audio (legacy method)
     async startRealTimeVisemeAnalysis(audioElement) {
         if (!this.mainMesh || !this.morphTargets) return;
 
@@ -1183,16 +1042,33 @@ class InteractiveBabyCharacter {
 
         const { primaryTarget, secondaryTarget, intensity, confidence } = visemeData;
 
-        // Apply primary viseme target
-        if (primaryTarget && this.morphTargets[primaryTarget] !== undefined) {
-            const primaryIndex = this.morphTargets[primaryTarget];
-            this.mainMesh.morphTargetInfluences[primaryIndex] = intensity * confidence;
+        // Reset all morph targets first for clean transitions
+        for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
+            this.mainMesh.morphTargetInfluences[i] = 0;
         }
 
-        // Apply secondary viseme target
+        // Apply primary viseme target with enhanced intensity mapping
+        if (primaryTarget && this.morphTargets[primaryTarget] !== undefined) {
+            const primaryIndex = this.morphTargets[primaryTarget];
+            const primaryIntensity = Math.min(1.0, intensity * confidence * 1.2);
+            this.mainMesh.morphTargetInfluences[primaryIndex] = primaryIntensity;
+            
+            console.log(`🎭 Primary viseme: ${primaryTarget} (${primaryIntensity.toFixed(3)})`);
+        }
+
+        // Apply secondary viseme target with reduced intensity
         if (secondaryTarget && this.morphTargets[secondaryTarget] !== undefined) {
             const secondaryIndex = this.morphTargets[secondaryTarget];
-            this.mainMesh.morphTargetInfluences[secondaryIndex] = intensity * confidence * 0.7;
+            const secondaryIntensity = Math.min(1.0, intensity * confidence * 0.6);
+            this.mainMesh.morphTargetInfluences[secondaryIndex] = secondaryIntensity;
+            
+            console.log(`🎭 Secondary viseme: ${secondaryTarget} (${secondaryIntensity.toFixed(3)})`);
+        }
+
+        // Apply jaw opening based on overall intensity
+        if (this.morphTargets['Jaw_Open'] !== undefined) {
+            const jawIntensity = Math.min(1.0, intensity * 0.8);
+            this.mainMesh.morphTargetInfluences[this.morphTargets['Jaw_Open']] = jawIntensity;
         }
 
         // Force immediate updates for high refresh rate
@@ -1240,8 +1116,20 @@ class InteractiveBabyCharacter {
     smoothTransitionToMorphTarget(morphTargetName, phoneme, duration = 0.15) {
         if (!this.mainMesh || !this.morphTargets) return;
 
-        // Get enhanced viseme data
-        const visemeData = this.phonemeDetector.getVisemeData(phoneme);
+        // Get enhanced viseme data - try to use existing data first
+        let visemeData;
+        if (typeof phoneme === 'object' && phoneme.primaryTarget) {
+            // Use enhanced phoneme data if available
+            visemeData = {
+                primary: phoneme.primaryTarget,
+                secondary: phoneme.secondaryTarget,
+                intensity: phoneme.intensity || 1.0
+            };
+        } else {
+            // Fallback to phoneme detector
+            visemeData = this.phonemeDetector.getVisemeData(phoneme);
+        }
+        
         const primaryTarget = visemeData.primary;
         const secondaryTarget = visemeData.secondary;
         const intensity = visemeData.intensity;
@@ -1515,6 +1403,75 @@ class InteractiveBabyCharacter {
 
         // Render scene
         this.renderer.render(this.scene, this.camera);
+    }
+
+    // Start real-time microphone analysis for live lip-sync
+    startMicrophoneLipSync() {
+        if (!this.mainMesh || !this.morphTargets) return;
+        
+        console.log('🎤 Starting real-time microphone lip-sync...');
+        
+        try {
+            // Get microphone stream
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    this.microphoneStream = stream;
+                    
+                    // Create audio context for microphone analysis
+                    const micAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = micAudioContext.createMediaStreamSource(stream);
+                    const analyser = micAudioContext.createAnalyser();
+                    
+                    analyser.fftSize = 2048;
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    
+                    source.connect(analyser);
+                    
+                    // Start real-time analysis
+                    this.microphoneAnalysisInterval = setInterval(() => {
+                        analyser.getByteFrequencyData(dataArray);
+                        this.analyzeMicrophoneAudio(dataArray);
+                    }, 50); // 20 FPS for smooth lip-sync
+                    
+                    console.log('✅ Microphone lip-sync started');
+                })
+                .catch(error => {
+                    console.warn('⚠️ Could not access microphone for lip-sync:', error);
+                });
+        } catch (error) {
+            console.warn('⚠️ Microphone lip-sync not supported:', error);
+        }
+    }
+    
+    // Stop microphone lip-sync
+    stopMicrophoneLipSync() {
+        if (this.microphoneAnalysisInterval) {
+            clearInterval(this.microphoneAnalysisInterval);
+            this.microphoneAnalysisInterval = null;
+        }
+        
+        if (this.microphoneStream) {
+            this.microphoneStream.getTracks().forEach(track => track.stop());
+            this.microphoneStream = null;
+        }
+        
+        // Reset to neutral
+        this.resetAllMorphTargets();
+        console.log('🛑 Microphone lip-sync stopped');
+    }
+    
+    // Analyze microphone audio in real-time
+    analyzeMicrophoneAudio(frequencyData) {
+        if (!this.mainMesh || !this.morphTargets) return;
+        
+        // Use the phoneme detector's frequency analysis
+        const visemeData = this.phonemeDetector.detectVisemeFromAudio(frequencyData);
+        
+        if (visemeData && visemeData.primary) {
+            // Apply viseme data directly for real-time response
+            this.applyVisemeInRealTime(visemeData);
+        }
     }
 
     // Trigger text-based fallback for lip-sync
