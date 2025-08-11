@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Baby Character - Debug Mode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .debug-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .error { border-left-color: #dc3545; }
+        .success { border-left-color: #28a745; }
+        .warning { border-left-color: #ffc107; }
+        #canvas-container {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border: 2px solid #333;
+            margin: 20px 0;
+        }
+        #debug-log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .loading { background: #ffc107; color: #000; }
+        .error { background: #dc3545; color: white; }
+        .success { background: #28a745; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🐛 3D Baby Character - Debug Mode</h1>
+    
+    <div class="debug-section">
+        <h2>🔍 Debug Information</h2>
+        <div id="browser-info"></div>
+        <div id="webgl-info"></div>
+        <div id="asset-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🎮 3D Canvas</h2>
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div id="render-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>📊 Console Output</h2>
+        <div id="debug-log"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🧪 Test Functions</h2>
+        <button onclick="testWebGL()">Test WebGL</button>
+        <button onclick="testAssetLoading()">Test Asset Loading</button>
+        <button onclick="testThreeJS()">Test Three.js</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <!-- Three.js and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let debugLog = document.getElementById('debug-log');
+        let canvas = document.getElementById('canvas');
+        let renderer = null;
+        let scene = null;
+        let camera = null;
+
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            debugLog.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollTop + 1000;
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        // Clear log
+        function clearLog() {
+            debugLog.textContent = '';
+        }
+
+        // Browser info
+        function showBrowserInfo() {
+            const info = document.getElementById('browser-info');
+            info.innerHTML = `
+                <div class="status success">
+                    <strong>Browser:</strong> ${navigator.userAgent}<br>
+                    <strong>Platform:</strong> ${navigator.platform}<br>
+                    <strong>Language:</strong> ${navigator.language}<br>
+                    <strong>Cookies Enabled:</strong> ${navigator.cookieEnabled}<br>
+                    <strong>Online:</strong> ${navigator.onLine}
+                </div>
+            `;
+        }
+
+        // WebGL info
+        function showWebGLInfo() {
+            const info = document.getElementById('webgl-info');
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                info.innerHTML = `
+                    <div class="status success">
+                        <strong>WebGL:</strong> Available ✅<br>
+                        <strong>Vendor:</strong> ${gl.getParameter(gl.VENDOR)}<br>
+                        <strong>Renderer:</strong> ${gl.getParameter(gl.RENDERER)}<br>
+                        <strong>Version:</strong> ${gl.getParameter(gl.VERSION)}
+                    </div>
+                `;
+                log('WebGL is available', 'success');
+            } else {
+                info.innerHTML = `
+                    <div class="status error">
+                        <strong>WebGL:</strong> Not Available ❌<br>
+                        Your browser doesn't support WebGL
+                    </div>
+                `;
+                log('WebGL is not available', 'error');
+            }
+        }
+
+        // Test WebGL
+        function testWebGL() {
+            log('Testing WebGL...');
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (gl) {
+                    log('WebGL test passed', 'success');
+                    return true;
+                } else {
+                    log('WebGL test failed', 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`WebGL test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test Three.js
+        function testThreeJS() {
+            log('Testing Three.js...');
+            try {
+                if (typeof THREE !== 'undefined') {
+                    log('Three.js loaded successfully', 'success');
+                    
+                    // Try to create a basic scene
+                    const testScene = new THREE.Scene();
+                    const testCamera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                    const testRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                    
+                    testRenderer.setSize(800, 400);
+                    testRenderer.render(testScene, testCamera);
+                    
+                    log('Basic Three.js scene created successfully', 'success');
+                    return true;
+                } else {
+                    log('Three.js not loaded', 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`Three.js test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test asset loading
+        function testAssetLoading() {
+            log('Testing asset loading...');
+            const assets = [
+                'src/baby.fbx',
+                'src/hdri.exr',
+                'src/body_Diffuse.jpg',
+                'app.js',
+                'config.js',
+                'phoneme-detector.js'
+            ];
+            
+            const statusDiv = document.getElementById('asset-status');
+            let allGood = true;
+            
+            assets.forEach(asset => {
+                fetch(asset)
+                    .then(response => {
+                        if (response.ok) {
+                            log(`✅ ${asset} - Found (${response.status})`, 'success');
+                        } else {
+                            log(`❌ ${asset} - Error ${response.status}`, 'error');
+                            allGood = false;
+                        }
+                    })
+                    .catch(error => {
+                        log(`❌ ${asset} - Network error: ${error.message}`, 'error');
+                        allGood = false;
+                    });
+            });
+            
+            return allGood;
+        }
+
+        // Initialize debug mode
+        window.onload = function() {
+            log('Debug mode initialized');
+            showBrowserInfo();
+            showWebGLInfo();
+            
+            // Test basic functionality
+            setTimeout(() => {
+                testWebGL();
+                testThreeJS();
+                testAssetLoading();
+            }, 1000);
+        };
+
+        // Override console methods to capture all output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log('LOG: ' + args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            log('ERROR: ' + args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            log('WARN: ' + args.join(' '), 'warning');
+        };
+
+        // Global error handler
+        window.onerror = function(message, source, lineno, colno, error) {
+            log(`Global Error: ${message} at ${source}:${lineno}:${colno}`, 'error');
+        };
+
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', function(event) {
+            log(`Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>
