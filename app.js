@@ -179,13 +179,13 @@ class InteractiveBabyCharacter {
         this.controls.dampingFactor = 0.05;
         this.controls.screenSpacePanning = false;
 
-        // Disable zoom in/out - only allow rotation
-        this.controls.enableZoom = false;
-        this.controls.enablePan = false;
+        // Enable zoom and pan for better model exploration
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
 
-        // Set fixed distance for mobile-friendly viewing
-        this.controls.minDistance = 2.5;
-        this.controls.maxDistance = 2.5;
+        // Set reasonable distance limits for zooming
+        this.controls.minDistance = 1.0;
+        this.controls.maxDistance = 5.0;
         this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
 
         // Mobile-specific settings
