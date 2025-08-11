@@ -70,7 +70,7 @@ class InteractiveBabyCharacter {
     }
 
     async setupHDRI() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             // Load HDRI environment map for lighting
             const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
             pmremGenerator.compileEquirectangularShader();
@@ -100,11 +100,8 @@ class InteractiveBabyCharacter {
                     path,
                     (hdriTexture) => {
                         try {
-                            // Generate environment map from HDRI
-                            const envMap = pmremGenerator.fromEquirectangular(hdriTexture).texture;
-
-                            // Set environment map for the scene (this provides lighting)
-                            this.scene.environment = envMap;
+                            // Generate environment map from HDRI and set it directly
+                            this.scene.environment = pmremGenerator.fromEquirectangular(hdriTexture).texture;
 
                             // Set background to white (this is just visual, doesn't affect lighting)
                             this.scene.background = new THREE.Color(0xffffff);
@@ -372,9 +369,7 @@ class InteractiveBabyCharacter {
                 const isBodyMesh = child.name.toLowerCase().includes('body') ||
                     (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
 
-                // Check if this is the hair mesh (by name or material properties)
-                const isHairMesh = child.name.toLowerCase().includes('hair') ||
-                    (child.material && child.material.name && child.material.name.toLowerCase().includes('hair'));
+
 
                 if (isBodyMesh) {
                     // Load alpha map for body mesh with fallback paths
@@ -1063,8 +1058,7 @@ class InteractiveBabyCharacter {
 
             // Create a bell curve effect: 0 → 1 → 0
             // Use a sine wave to create smooth rise and fall
-            const bellCurve = Math.sin(progress * Math.PI);
-            const easedProgress = bellCurve;
+            const easedProgress = Math.sin(progress * Math.PI);
 
             // Reset all morph targets first
             for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
@@ -1076,8 +1070,7 @@ class InteractiveBabyCharacter {
             if (primaryIndex !== undefined) {
                 const targetWeight = Math.min(1.0, intensity * 1.2); // Slightly reduced for smoother effect
                 const startWeight = startWeights[primaryIndex] || 0;
-                const currentWeight = startWeight + (targetWeight - startWeight) * easedProgress;
-                this.mainMesh.morphTargetInfluences[primaryIndex] = currentWeight;
+                this.mainMesh.morphTargetInfluences[primaryIndex] = startWeight + (targetWeight - startWeight) * easedProgress;
             }
 
             // Apply secondary morph target if available with bell curve
@@ -1086,8 +1079,7 @@ class InteractiveBabyCharacter {
                 if (secondaryIndex !== undefined) {
                     const targetWeight = Math.min(1.0, intensity * 0.8); // Secondary gets 80% of primary intensity
                     const startWeight = startWeights[secondaryIndex] || 0;
-                    const currentWeight = startWeight + (targetWeight - startWeight) * easedProgress;
-                    this.mainMesh.morphTargetInfluences[secondaryIndex] = currentWeight;
+                    this.mainMesh.morphTargetInfluences[secondaryIndex] = startWeight + (targetWeight - startWeight) * easedProgress;
                 }
             }
 
