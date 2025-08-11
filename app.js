@@ -10,125 +10,74 @@
 
 class ProfessionalBabyCharacter {
     constructor() {
-        try {
-            console.log('🔍 Constructor starting...');
-            console.log('🔍 THREE available:', typeof THREE);
-            console.log('🔍 ProfessionalLipSyncSystem available:', typeof ProfessionalLipSyncSystem);
-            
-            // Core Three.js components
-            this.scene = null;
-            this.camera = null;
-            this.renderer = null;
-            this.controls = null;
-            this.babyModel = null;
-            this.mixer = null;
-            this.clock = new THREE.Clock();
+        // Core Three.js components
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.controls = null;
+        this.babyModel = null;
+        this.mixer = null;
+        this.clock = new THREE.Clock();
 
-            // Professional lip-sync system
-            if (typeof ProfessionalLipSyncSystem === 'undefined') {
-                throw new Error('ProfessionalLipSyncSystem class not found. Check if phoneme-detector.js is loaded.');
-            }
-            this.lipSyncSystem = new ProfessionalLipSyncSystem();
-            console.log('✅ Lip-sync system initialized');
-            
-            // Audio components
-            this.audioContext = null;
-            this.audioElement = null;
-            this.currentAudioUrl = null;
-            this.currentText = null;
-            
-            // Character state
-            this.isSpeaking = false;
-            this.morphTargets = {};
-            this.mainMesh = null;
-            
-            // Speech recognition
-            this.recognition = null;
-            this.isRecording = false;
-            
-            // Speech display
-            this.speechDisplay = null;
-            this.currentUserSpeech = '';
-            this.currentBabySpeech = '';
-            
-            // Animation system
-            this.lipSyncTimeouts = [];
-            this.currentViseme = null;
-            this.visemeTransitionDuration = 0.1;
-            
-            console.log('✅ Constructor completed successfully');
-            
-            // Initialize the application
-            this.init();
-            
-        } catch (error) {
-            console.error('❌ Constructor failed:', error);
-            document.getElementById('loading').innerHTML = `
-                <div style="text-align: center; padding: 20px; color: white;">
-                    <h3>❌ Initialization Failed</h3>
-                    <p>Error: ${error.message}</p>
-                    <p>Please check the browser console for details.</p>
-                </div>
-            `;
-        }
+        // Professional lip-sync system
+        this.lipSyncSystem = new ProfessionalLipSyncSystem();
+        
+        // Audio components
+        this.audioContext = null;
+        this.audioElement = null;
+        this.currentAudioUrl = null;
+        this.currentText = null;
+        
+        // Character state
+        this.isSpeaking = false;
+        this.morphTargets = {};
+        this.mainMesh = null;
+        
+        // Speech recognition
+        this.recognition = null;
+        this.isRecording = false;
+        
+        // Speech display
+        this.speechDisplay = null;
+        this.currentUserSpeech = '';
+        this.currentBabySpeech = '';
+        
+        // Animation system
+        this.lipSyncTimeouts = [];
+        this.currentViseme = null;
+        this.visemeTransitionDuration = 0.1;
+        
+        // Initialize the application
+        this.init();
     }
 
     /**
      * Initialize the application
      */
     async init() {
-        try {
-            console.log('🚀 Initializing Professional Baby Character...');
-            console.log('🔍 Checking Three.js availability:', typeof THREE);
-            console.log('🔍 Checking ProfessionalLipSyncSystem availability:', typeof ProfessionalLipSyncSystem);
-            
-            this.setupScene();
-            console.log('✅ Scene setup complete');
-            
-            this.setupCamera();
-            console.log('✅ Camera setup complete');
-            
-            this.setupRenderer();
-            console.log('✅ Renderer setup complete');
-            
-            this.setupControls();
-            console.log('✅ Controls setup complete');
-            
-            this.setupSpeechRecognition();
-            console.log('✅ Speech recognition setup complete');
-            
-            this.setupEventListeners();
-            console.log('✅ Event listeners setup complete');
-            
-            // Load the 3D model
-            console.log('🔄 Loading 3D model...');
-            await this.loadBabyModel();
-            console.log('✅ 3D model loaded');
-            
-            // Initialize speech display
-            this.speechDisplay = document.getElementById('speech-display');
-            console.log('✅ Speech display initialized');
-            
-            // Start animation loop
-            this.animate();
-            console.log('✅ Animation loop started');
-            
-            // Hide loading screen
-            const loadingElement = document.getElementById('loading');
-            if (loadingElement) {
-                loadingElement.classList.add('hidden');
-                console.log('✅ Loading screen hidden');
-            } else {
-                console.warn('⚠️ Loading element not found');
-            }
-            
-            this.updateStatus('Ready! Click 🎤 to speak or test the lip-sync system.');
-            console.log('✅ Professional Baby Character initialized successfully');
-            
-        } catch (error) {
-            console.error('❌ Initialization failed:', error);
-            this.updateStatus('Initialization failed: ' + error.message);
+        this.setupScene();
+        this.setupCamera();
+        this.setupRenderer();
+        this.setupControls();
+        this.setupSpeechRecognition();
+        this.setupEventListeners();
+        
+        // Load the 3D model
+        await this.loadBabyModel();
+        
+        // Initialize speech display
+        this.speechDisplay = document.getElementById('speech-display');
+        
+        // Start animation loop
+        this.animate();
+        
+        // Hide loading screen
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) {
+            loadingElement.classList.add('hidden');
         }
+        
+        this.updateStatus('Ready! Click 🎤 to speak or test the lip-sync system.');
     }
 
     /**
@@ -137,20 +86,15 @@ class ProfessionalBabyCharacter {
     setupScene() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xE6E8E6);
-        console.log('🎨 Scene background set to:', this.scene.background);
         
         // Add ambient lighting
         const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         this.scene.add(ambientLight);
-        console.log('💡 Ambient light added');
         
         // Add directional lighting
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 5, 5);
         this.scene.add(directionalLight);
-        console.log('💡 Directional light added at:', directionalLight.position);
-        
-        console.log('🎨 Scene setup complete with', this.scene.children.length, 'children');
     }
 
     /**
@@ -177,51 +121,31 @@ class ProfessionalBabyCharacter {
      * Setup renderer
      */
     setupRenderer() {
-        try {
-            const canvas = document.getElementById('canvas');
-            console.log('🔍 Canvas element:', canvas);
-            
-            if (!canvas) {
-                throw new Error('Canvas element not found');
-            }
-            
-            // Check WebGL support
-            if (!window.WebGLRenderingContext) {
-                throw new Error('WebGL not supported');
-            }
-            
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: canvas,
-                antialias: true,
-                alpha: true
-            });
-            
-            console.log('✅ WebGL renderer created');
-            
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
-            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            this.renderer.shadowMap.enabled = true;
-            this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            
-            // Handle different Three.js versions
-            if (THREE.sRGBEncoding !== undefined) {
-                this.renderer.outputEncoding = THREE.sRGBEncoding;
-            } else if (this.renderer.outputColorSpace !== undefined) {
-                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-            }
-            
-            if (THREE.ACESFilmicToneMapping !== undefined) {
-                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            }
-            
-            this.renderer.toneMappingExposure = 1.0;
-            
-            console.log('✅ Renderer setup complete');
-            
-        } catch (error) {
-            console.error('❌ Renderer setup failed:', error);
-            throw error;
+        const canvas = document.getElementById('canvas');
+        
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+            alpha: true
+        });
+        
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // Handle different Three.js versions
+        if (THREE.sRGBEncoding !== undefined) {
+            this.renderer.outputEncoding = THREE.sRGBEncoding;
+        } else if (this.renderer.outputColorSpace !== undefined) {
+            this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         }
+        
+        if (THREE.ACESFilmicToneMapping !== undefined) {
+            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        }
+        
+        this.renderer.toneMappingExposure = 1.0;
     }
 
     /**
@@ -288,7 +212,6 @@ class ProfessionalBabyCharacter {
             };
 
             this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
                 this.updateStatus('Speech recognition error. Please try again.');
                 this.stopRecording();
             };
@@ -297,7 +220,6 @@ class ProfessionalBabyCharacter {
                 this.stopRecording();
             };
         } else {
-            console.error('Speech recognition not supported');
             this.updateStatus('Speech recognition not supported in this browser');
         }
     }
@@ -365,22 +287,14 @@ class ProfessionalBabyCharacter {
                     }
 
                     const path = possiblePaths[index];
-                    console.log(`🔄 Trying to load model from: ${path}`);
-
                     loader.load(
                         path,
-                        (object) => {
-                            console.log(`✅ Model loaded successfully from: ${path}`);
-                            resolve(object);
-                        },
+                        (object) => resolve(object),
                         (progress) => {
                             const percent = (progress.loaded / progress.total * 100).toFixed(0);
                             document.getElementById('loading').textContent = `Loading 3D Model... ${percent}%`;
                         },
-                        (error) => {
-                            console.warn(`❌ Failed to load from ${path}:`, error);
-                            tryLoad(index + 1);
-                        }
+                        (error) => tryLoad(index + 1)
                     );
                 };
 
@@ -391,7 +305,6 @@ class ProfessionalBabyCharacter {
             this.setupModel();
             
         } catch (error) {
-            console.error('❌ Error loading FBX model:', error);
             this.updateStatus('Error loading 3D model - check console for details');
             
             document.getElementById('loading').innerHTML = `
@@ -412,8 +325,7 @@ class ProfessionalBabyCharacter {
 
         // Scale and position the model
         this.babyModel.scale.setScalar(0.01);
-        this.babyModel.position.set(0, 0, 0); // Center the model
-        console.log('🎯 Model positioned at:', this.babyModel.position);
+        this.babyModel.position.set(0, 0, 0);
 
         // Apply materials and find morph targets
         this.babyModel.traverse((child) => {
@@ -423,8 +335,6 @@ class ProfessionalBabyCharacter {
                                  (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
                 
                 if (isBodyMesh) {
-                    console.log('🎨 Processing body mesh:', child.name);
-                    
                     // Load alpha map for body mesh
                     const textureLoader = new THREE.TextureLoader();
                     const alphaMapPaths = [
@@ -437,13 +347,10 @@ class ProfessionalBabyCharacter {
                     let alphaMap = null;
                     for (let i = 0; i < alphaMapPaths.length; i++) {
                         try {
-                            const path = alphaMapPaths[i];
-                            console.log(`🔄 Trying to load alpha map from: ${path}`);
-                            alphaMap = textureLoader.load(path);
-                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
+                            alphaMap = textureLoader.load(alphaMapPaths[i]);
                             break;
                         } catch (error) {
-                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
+                            // Continue to next path
                         }
                     }
                     
@@ -463,7 +370,6 @@ class ProfessionalBabyCharacter {
                     });
                     
                     child.material = bodyMaterial;
-                    console.log(`✅ Body material created with alpha map:`, alphaMap ? 'Loaded' : 'Not loaded');
                 } else {
                     // Apply standard material for other meshes
                     const standardMaterial = new THREE.MeshStandardMaterial({
@@ -491,9 +397,6 @@ class ProfessionalBabyCharacter {
                     
                     // Enable morph targets on material
                     child.material.morphTargets = true;
-                    
-                    console.log('🎭 Found morph target mesh:', child.name);
-                    console.log('🎭 Available morph targets:', Object.keys(child.morphTargetDictionary));
                 }
             }
         });
@@ -506,17 +409,6 @@ class ProfessionalBabyCharacter {
         }
 
         this.scene.add(this.babyModel);
-        console.log('✅ 3D model added to scene');
-        
-        // Add a simple test cube to verify rendering
-        const testGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        const testMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const testCube = new THREE.Mesh(testGeometry, testMaterial);
-        testCube.position.set(2, 0, 0); // Position to the right of the baby
-        this.scene.add(testCube);
-        console.log('🧪 Test red cube added to scene');
-        
-        console.log('✅ 3D model setup complete. Scene now has', this.scene.children.length, 'children');
     }
 
     /**
@@ -537,7 +429,6 @@ class ProfessionalBabyCharacter {
             this.recognition.start();
             
         } catch (error) {
-            console.error('❌ Failed to start recording:', error);
             this.updateStatus('Failed to start recording');
         }
     }
@@ -570,7 +461,6 @@ class ProfessionalBabyCharacter {
                 this.updateStatus('Failed to generate response');
             }
         } catch (error) {
-            console.error('❌ Error processing speech:', error);
             this.updateStatus('Error processing speech');
         }
     }
@@ -595,8 +485,6 @@ class ProfessionalBabyCharacter {
         // Show baby's speech
         this.showBabySpeech(textContent);
         
-        console.log('🎵 Starting baby response with perfect lip-sync...');
-        
         try {
             // Create audio element
             this.audioElement = new Audio(audioUrl);
@@ -615,7 +503,6 @@ class ProfessionalBabyCharacter {
                 
                 this.audioElement.onloadedmetadata = () => {
                     clearTimeout(timeout);
-                    console.log('✅ Audio loaded, duration:', this.audioElement.duration);
                     resolve();
                 };
                 
@@ -627,7 +514,6 @@ class ProfessionalBabyCharacter {
             
             // Start audio playback
             await this.audioElement.play();
-            console.log('✅ Audio playback started');
             
             this.isSpeaking = true;
             
@@ -637,7 +523,6 @@ class ProfessionalBabyCharacter {
             // Wait for audio to finish
             await new Promise((resolve) => {
                 this.audioElement.onended = () => {
-                    console.log('🏁 Audio playback ended');
                     this.stopLipSync();
                     this.isSpeaking = false;
                     this.updateStatus('Ready to interact!');
@@ -646,7 +531,6 @@ class ProfessionalBabyCharacter {
             });
             
         } catch (error) {
-            console.error('❌ Audio playback failed:', error);
             this.updateStatus('Audio failed - using text-based animation');
             
             // Fallback to text-based animation
@@ -660,7 +544,6 @@ class ProfessionalBabyCharacter {
      */
     async startPerfectLipSync(audioElement, textContent) {
         if (!this.mainMesh || !this.morphTargets) {
-            console.warn('⚠️ No morph targets available, using text-based fallback');
             this.startTextBasedLipSync(textContent);
             return;
         }
@@ -674,11 +557,7 @@ class ProfessionalBabyCharacter {
                 this.applyVisemeInRealTime(visemeData);
             });
             
-            console.log('🎭 Perfect lip-sync started with audio analysis');
-            
         } catch (error) {
-            console.error('❌ Failed to start perfect lip-sync:', error);
-            console.log('🔄 Falling back to text-based lip-sync');
             this.startTextBasedLipSync(textContent);
         }
     }
@@ -730,8 +609,6 @@ class ProfessionalBabyCharacter {
     startTextBasedLipSync(textContent) {
         if (!this.mainMesh || !this.morphTargets) return;
 
-        console.log('📝 Starting text-based lip-sync fallback...');
-        
         // Clear existing timeouts
         this.stopLipSync();
         
@@ -739,7 +616,6 @@ class ProfessionalBabyCharacter {
         const phonemes = this.lipSyncSystem.extractPhonemes(textContent);
         
         if (phonemes.length === 0) {
-            console.warn('⚠️ No phonemes extracted, using simple animation');
             this.startSimpleLipSync(2.0); // Default duration
             return;
         }
@@ -747,8 +623,6 @@ class ProfessionalBabyCharacter {
         // Calculate timing
         const totalDuration = 2.0; // Default duration
         const timePerPhoneme = totalDuration / phonemes.length;
-        
-        console.log(`🎭 Text-based lip-sync: ${phonemes.length} phonemes over ${totalDuration}s`);
 
         // Schedule phoneme transitions
         phonemes.forEach((phonemeData, index) => {
@@ -803,8 +677,6 @@ class ProfessionalBabyCharacter {
     startSimpleLipSync(duration) {
         if (!this.mainMesh || !this.morphTargets) return;
 
-        console.log('🎭 Starting simple lip-sync animation...');
-        
         this.stopLipSync();
         
         // Simple mouth movement pattern
@@ -844,7 +716,6 @@ class ProfessionalBabyCharacter {
         }
 
         this.mainMesh.morphTargetInfluencesNeedUpdate = true;
-        console.log('😐 Reset to neutral expression');
     }
 
     /**
@@ -938,7 +809,7 @@ class ProfessionalBabyCharacter {
             const label = document.createElement('div');
             label.className = 'speech-label';
             label.textContent = 'Baby says:';
-            babyBubble.appendChild(label);
+            babyBubble.appendChild(content);
             
             const content = document.createElement('div');
             content.className = 'speech-content';
@@ -955,38 +826,23 @@ class ProfessionalBabyCharacter {
      * Main animation loop
      */
     animate() {
-        try {
-            requestAnimationFrame(() => this.animate());
+        requestAnimationFrame(() => this.animate());
 
-            const delta = this.clock.getDelta();
+        const delta = this.clock.getDelta();
 
-            // Update animation mixer
-            if (this.mixer) {
-                this.mixer.update(delta);
-            }
+        // Update animation mixer
+        if (this.mixer) {
+            this.mixer.update(delta);
+        }
 
-            // Update controls
-            if (this.controls) {
-                this.controls.update();
-            }
+        // Update controls
+        if (this.controls) {
+            this.controls.update();
+        }
 
-            // Render scene
-            if (this.renderer && this.scene && this.camera) {
-                // Debug camera and model positions
-                if (this.babyModel && this.frameCount % 60 === 0) { // Log every 60 frames
-                    console.log('🎯 Camera position:', this.camera.position);
-                    console.log('🎯 Model position:', this.babyModel.position);
-                    console.log('🎯 Model visible:', this.babyModel.visible);
-                    console.log('🎯 Scene children count:', this.scene.children.length);
-                }
-                
-                this.renderer.render(this.scene, this.camera);
-                this.frameCount = (this.frameCount || 0) + 1;
-            } else {
-                console.warn('⚠️ Missing renderer, scene, or camera for rendering');
-            }
-        } catch (error) {
-            console.error('❌ Animation loop error:', error);
+        // Render scene
+        if (this.renderer && this.scene && this.camera) {
+            this.renderer.render(this.scene, this.camera);
         }
     }
 }

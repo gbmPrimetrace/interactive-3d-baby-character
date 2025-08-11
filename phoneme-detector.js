@@ -364,10 +364,8 @@ class ProfessionalLipSyncSystem {
             this.analyser.fftSize = this.audioConfig.fftSize;
             this.analyser.smoothingTimeConstant = 0.8;
             
-            console.log('✅ Professional lip-sync audio system initialized');
             return true;
         } catch (error) {
-            console.error('❌ Failed to initialize audio analysis:', error);
             return false;
         }
     }
@@ -377,7 +375,6 @@ class ProfessionalLipSyncSystem {
      */
     async startRealTimeAudioAnalysis(audioElement, onVisemeCallback) {
         if (!this.audioContext || !this.analyser) {
-            console.error('❌ Audio system not initialized');
             return false;
         }
 
@@ -388,14 +385,12 @@ class ProfessionalLipSyncSystem {
             this.analyser.connect(this.audioContext.destination);
 
             this.isAnalyzing = true;
-            console.log('🎵 Starting real-time audio analysis for perfect lip-sync...');
 
             // Start continuous analysis
             this.analyzeAudioContinuously(onVisemeCallback);
 
             return true;
         } catch (error) {
-            console.error('❌ Failed to start audio analysis:', error);
             return false;
         }
     }
@@ -597,8 +592,6 @@ class ProfessionalLipSyncSystem {
             this.audioSource.disconnect();
             this.audioSource = null;
         }
-        
-        console.log('🛑 Audio analysis stopped');
     }
 
     /**
