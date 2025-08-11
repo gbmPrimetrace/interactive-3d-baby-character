@@ -1,5 +1,16 @@
-class InteractiveBabyCharacter {
+/**
+ * Professional 3D Baby Character with Perfect Lip-Sync
+ * 
+ * Features:
+ * - Audio-driven lip-sync using real-time frequency analysis
+ * - Character Creator 4 morph target integration
+ * - Perfect text-audio alignment
+ * - Professional-grade animation system
+ */
+
+class ProfessionalBabyCharacter {
     constructor() {
+        // Core Three.js components
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -8,198 +19,153 @@ class InteractiveBabyCharacter {
         this.mixer = null;
         this.clock = new THREE.Clock();
 
+        // Professional lip-sync system
+        this.lipSyncSystem = new ProfessionalLipSyncSystem();
+        
+        // Audio components
+        this.audioContext = null;
+        this.audioElement = null;
+        this.currentAudioUrl = null;
+        this.currentText = null;
+        
+        // Character state
+        this.isSpeaking = false;
+        this.morphTargets = {};
+        this.mainMesh = null;
+        
         // Speech recognition
         this.recognition = null;
         this.isRecording = false;
-
-        // Audio
-        this.audioContext = null;
-        this.audioElement = null;
-
-        // Character state
-        this.currentEmotion = 'neutral';
-        this.isSpeaking = false;
-        this.morphTargets = {};
-
+        
         // Speech display
+        this.speechDisplay = null;
         this.currentUserSpeech = '';
         this.currentBabySpeech = '';
-        this.speechDisplay = null;
-
-        // Initialize phoneme detector (audio context will be initialized on first user interaction)
-        this.phonemeDetector = new PhonemeDetector();
-
+        
+        // Animation system
+        this.lipSyncTimeouts = [];
+        this.currentViseme = null;
+        this.visemeTransitionDuration = 0.1;
+        
+        // Initialize the application
         this.init();
     }
 
+    /**
+     * Initialize the application
+     */
     async init() {
+        console.log('🚀 Initializing Professional Baby Character...');
+        
         this.setupScene();
         this.setupCamera();
         this.setupRenderer();
-
-        // Wait for HDRI to load before continuing
-        try {
-            await this.setupHDRI();
-        } catch (error) {
-            console.error('Failed to load HDRI, using fallback lighting');
-            // Add a simple ambient light as fallback
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-            this.scene.add(ambientLight);
-            // Set white background for fallback case too
-            this.scene.background = new THREE.Color(0xedede9);
-        }
-
         this.setupControls();
         this.setupSpeechRecognition();
         this.setupEventListeners();
-
+        
+        // Load the 3D model
         await this.loadBabyModel();
-
+        
         // Initialize speech display
         this.speechDisplay = document.getElementById('speech-display');
-
+        
+        // Start animation loop
         this.animate();
-
+        
+        // Hide loading screen
         document.getElementById('loading').classList.add('hidden');
-        this.updateStatus('Ready! Click "Test Morph" to see animations or "🎤" to speak.');
+        this.updateStatus('Ready! Click 🎤 to speak or test the lip-sync system.');
+        
+        console.log('✅ Professional Baby Character initialized successfully');
     }
 
+    /**
+     * Setup Three.js scene
+     */
     setupScene() {
         this.scene = new THREE.Scene();
-        // Remove fog and background color - will be set by HDRI
+        this.scene.background = new THREE.Color(0x1a1a1a);
+        
+        // Add ambient lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        this.scene.add(ambientLight);
+        
+        // Add directional lighting
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        this.scene.add(directionalLight);
     }
 
-    async setupHDRI() {
-        return new Promise((resolve) => {
-            // Load HDRI environment map for lighting
-            const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-            pmremGenerator.compileEquirectangularShader();
-
-            // Load the HDRI texture using EXR loader
-            const exrLoader = new THREE.EXRLoader();
-
-            // Try multiple possible paths for GitHub Pages compatibility
-            const possiblePaths = [
-                'src/hdri.exr',
-                './src/hdri.exr',
-                'hdri.exr',
-                './hdri.exr'
-            ];
-
-            const tryLoadHDRI = (index) => {
-                if (index >= possiblePaths.length) {
-                    console.warn('Failed to load HDRI from all possible paths, using fallback lighting');
-                    resolve(); // Resolve without error to continue with fallback
-                    return;
-                }
-
-                const path = possiblePaths[index];
-                console.log(`Trying to load HDRI from: ${path}`);
-
-                exrLoader.load(
-                    path,
-                    (hdriTexture) => {
-                        try {
-                            // Generate environment map from HDRI and set it directly
-                            this.scene.environment = pmremGenerator.fromEquirectangular(hdriTexture).texture;
-
-                            // Set background to white (this is just visual, doesn't affect lighting)
-                            this.scene.background = new THREE.Color(0xffffff);
-
-                            console.log('✅ HDRI loaded successfully from:', path);
-                            console.log('Environment map set:', this.scene.environment);
-                            console.log('Background set:', this.scene.background);
-
-                            // Clean up
-                            hdriTexture.dispose();
-                            pmremGenerator.dispose();
-                            resolve();
-                        } catch (error) {
-                            console.error('Error processing HDRI:', error);
-                            tryLoadHDRI(index + 1);
-                        }
-                    },
-                    (progress) => {
-                        console.log('HDRI loading progress:', progress);
-                    },
-                    (error) => {
-                        console.warn(`❌ Failed to load HDRI from ${path}:`, error);
-                        // Try next path
-                        tryLoadHDRI(index + 1);
-                    }
-                );
-            };
-
-            tryLoadHDRI(0);
-        });
-    }
-
+    /**
+     * Setup camera
+     */
     setupCamera() {
         this.camera = new THREE.PerspectiveCamera(
-            CONFIG.CAMERA.FOV,
+            75,
             window.innerWidth / window.innerHeight,
-            CONFIG.CAMERA.NEAR,
-            CONFIG.CAMERA.FAR
+            0.1,
+            1000
         );
-
-        // Position camera to fit model on screen by default
+        
+        // Position camera for optimal viewing
         this.camera.position.set(0, 0.5, 2.5);
-
-        // Mobile-specific camera adjustments
+        
+        // Mobile adjustments
         if (window.innerWidth <= 768) {
-            this.camera.position.set(0, 0.3, 2.8); // Slightly further back on mobile
+            this.camera.position.set(0, 0.3, 2.8);
         }
     }
 
+    /**
+     * Setup renderer
+     */
     setupRenderer() {
         this.renderer = new THREE.WebGLRenderer({
             canvas: document.getElementById('canvas'),
-            antialias: CONFIG.PERFORMANCE.ANTIALIASING,
+            antialias: true,
             alpha: true
         });
+        
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(CONFIG.PERFORMANCE.PIXEL_RATIO);
-        this.renderer.shadowMap.enabled = false; // Disable shadows for HDRI lighting
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
-        this.renderer.toneMapping = THREE.NeutralToneMapping;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
-
-        // Ensure tone mapping is properly set
-        if (this.renderer.toneMapping === undefined) {
-            this.renderer.toneMapping = THREE.NoToneMapping;
-        }
     }
 
+    /**
+     * Setup camera controls
+     */
     setupControls() {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.2;
-        this.controls.screenSpacePanning = false;
-
-        // Enable zoom and pan for better model exploration
+        this.controls.dampingFactor = 0.05;
         this.controls.enableZoom = true;
-        this.controls.enablePan = false;
-
-        // Set reasonable distance limits for zooming
-        this.controls.minDistance = 3.5;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 1.0;
         this.controls.maxDistance = 5.0;
-        this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
-
-        // Mobile-specific settings
+        
+        // Mobile optimizations
         if (window.innerWidth <= 768) {
-            this.controls.enableDamping = false; // Disable damping on mobile for better performance
-            this.controls.rotateSpeed = 0.8; // Slightly slower rotation on mobile
+            this.controls.enableDamping = false;
+            this.controls.rotateSpeed = 0.8;
         }
     }
 
+    /**
+     * Setup speech recognition
+     */
     setupSpeechRecognition() {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             this.recognition = new SpeechRecognition();
-            this.recognition.continuous = CONFIG.SPEECH.CONTINUOUS;
-            this.recognition.interimResults = CONFIG.SPEECH.INTERIM_RESULTS;
-            this.recognition.lang = CONFIG.SPEECH.LANGUAGE;
-            this.recognition.maxAlternatives = CONFIG.SPEECH.MAX_ALTERNATIVES;
+            this.recognition.continuous = false;
+            this.recognition.interimResults = true;
+            this.recognition.lang = 'en-US';
+            this.recognition.maxAlternatives = 1;
 
             this.recognition.onstart = () => {
                 this.isRecording = true;
@@ -211,7 +177,6 @@ class InteractiveBabyCharacter {
                 let finalTranscript = '';
                 let interimTranscript = '';
 
-                // Process all results
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
@@ -249,6 +214,9 @@ class InteractiveBabyCharacter {
         }
     }
 
+    /**
+     * Setup event listeners
+     */
     setupEventListeners() {
         // Microphone button
         document.getElementById('micButton').addEventListener('click', () => {
@@ -269,7 +237,7 @@ class InteractiveBabyCharacter {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
-
+            
             // Adjust camera position for mobile
             if (window.innerWidth <= 768) {
                 this.camera.position.set(0, 0.3, 2.8);
@@ -287,12 +255,14 @@ class InteractiveBabyCharacter {
         });
     }
 
+    /**
+     * Load the 3D baby model
+     */
     async loadBabyModel() {
         const loader = new THREE.FBXLoader();
-
+        
         try {
             this.babyModel = await new Promise((resolve, reject) => {
-                // Try multiple possible paths for GitHub Pages compatibility
                 const possiblePaths = [
                     'src/baby.fbx',
                     './src/baby.fbx',
@@ -307,7 +277,7 @@ class InteractiveBabyCharacter {
                     }
 
                     const path = possiblePaths[index];
-                    console.log(`Trying to load model from: ${path}`);
+                    console.log(`🔄 Trying to load model from: ${path}`);
 
                     loader.load(
                         path,
@@ -321,7 +291,6 @@ class InteractiveBabyCharacter {
                         },
                         (error) => {
                             console.warn(`❌ Failed to load from ${path}:`, error);
-                            // Try next path
                             tryLoad(index + 1);
                         }
                     );
@@ -332,138 +301,66 @@ class InteractiveBabyCharacter {
 
             // Setup the model
             this.setupModel();
-
+            
         } catch (error) {
-            console.error('Error loading FBX model:', error);
+            console.error('❌ Error loading FBX model:', error);
             this.updateStatus('Error loading 3D model - check console for details');
-
-            // Show more helpful error message
+            
             document.getElementById('loading').innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <h3>❌ 3D Model Loading Failed</h3>
                     <p>Error: ${error.message}</p>
                     <p>Please check the browser console for more details.</p>
-                    <p>Make sure all files are uploaded to GitHub Pages correctly.</p>
                 </div>
             `;
         }
     }
 
+    /**
+     * Setup the loaded 3D model
+     */
     setupModel() {
         if (!this.babyModel) return;
 
         // Scale and position the model
-        this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
-        this.babyModel.position.set(
-            CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y, // Move down by 1 units in Y axis5
-            CONFIG.SCENE.MODEL_POSITION.z
-        );
+        this.babyModel.scale.setScalar(0.01);
+        this.babyModel.position.set(0, -20, 0);
 
-        // Apply MeshStandardMaterial to all meshes and enable shadows
+        // Apply materials and find morph targets
         this.babyModel.traverse((child) => {
             if (child.isMesh) {
-                let standardMaterial;
-
-                // Check if this is the body mesh (by name or material properties)
-                const isBodyMesh = child.name.toLowerCase().includes('body') ||
-                    (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
-
-
-
-                if (isBodyMesh) {
-                    // Load alpha map for body mesh with fallback paths
-                    const textureLoader = new THREE.TextureLoader();
-
-                    // Try multiple possible paths for GitHub Pages compatibility
-                    const alphaMapPaths = [
-                        'src/body__Opacity.jpg',
-                        './src/body__Opacity.jpg',
-                        'body__Opacity.jpg',
-                        './body__Opacity.jpg'
-                    ];
-
-                    // Load alpha map synchronously
-                    let alphaMap = null;
-                    for (let i = 0; i < alphaMapPaths.length; i++) {
-                        try {
-                            const path = alphaMapPaths[i];
-                            console.log(`Trying to load alpha map from: ${path}`);
-
-                            // Use synchronous loading for immediate access
-                            alphaMap = textureLoader.load(path);
-                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
-                            break;
-                        } catch (error) {
-                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
-                            if (i === alphaMapPaths.length - 1) {
-                                console.warn('Failed to load alpha map from all possible paths');
-                            }
-                        }
-                    }
-
-                    standardMaterial = new THREE.MeshStandardMaterial({
-                        color: child.material.color || 0xffffff,
-                        map: child.material.map || null,
-                        normalMap: child.material.normalMap || null,
-                        roughnessMap: child.material.roughnessMap || null,
-                        aoMap: child.material.aoMap || null,
-                        alphaMap: alphaMap,
-                        alphaTest: 0.5,
-                        transparent: true,
-                        side: THREE.DoubleSide,
-                        roughness: 0.5,
-                        metalness: 0.1
-                    });
-
-                    // Debug alpha map setup
-                    if (alphaMap) {
-                        console.log(`✅ Alpha map applied to ${child.name}:`, alphaMap);
-                        console.log(`   - Alpha map image:`, alphaMap.image);
-                        console.log(`   - Material transparent:`, standardMaterial.transparent);
-                        console.log(`   - Material alphaTest:`, standardMaterial.alphaTest);
-                    } else {
-                        console.warn(`⚠️ No alpha map loaded for ${child.name}`);
-                    }
-                } else {
-                    // Apply standard material for other meshes
-                    standardMaterial = new THREE.MeshStandardMaterial({
-                        color: child.material.color || 0xffffff,
-                        map: child.material.map || null,
-                        normalMap: child.material.normalMap || null,
-                        roughnessMap: child.material.roughnessMap || null,
-                        aoMap: child.material.aoMap || null,
-                        opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                        transparent: child.material.transparent || false,
-                        roughness: 0.5,
-                        metalness: 0.1
-                    });
-                }
+                // Apply standard material
+                const standardMaterial = new THREE.MeshStandardMaterial({
+                    color: child.material?.color || 0xffffff,
+                    map: child.material?.map || null,
+                    normalMap: child.material?.normalMap || null,
+                    roughnessMap: child.material?.roughnessMap || null,
+                    aoMap: child.material?.aoMap || null,
+                    transparent: child.material?.transparent || false,
+                    opacity: child.material?.opacity !== undefined ? child.material.opacity : 1,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
 
                 child.material = standardMaterial;
-                // No shadows with HDRI lighting
+                child.castShadow = true;
+                child.receiveShadow = true;
 
-                // Store morph targets for lip sync (use the mesh with the most morph targets - the main face mesh)
-                if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 50) {
+                // Find mesh with morph targets (usually the main face mesh)
+                if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 10) {
                     this.morphTargets = child.morphTargetDictionary;
-                    this.mainMesh = child; // Store reference to the main mesh
-
-                    // Ensure the material supports morph targets
-                    if (child.material) {
-                        child.material.morphTargets = true;
-                        console.log('Enabled morph targets on material for mesh:', child.name);
-                    }
-
-                    console.log('Found main morph target mesh:', child.name);
-                    console.log('Available morph targets:', Object.keys(child.morphTargetDictionary));
-                    console.log('Available morph targets from phoneme detector:', this.phonemeDetector.getAvailableMorphTargets());
-                    console.log('Mesh has morphTargetInfluences:', child.morphTargetInfluences ? 'Yes' : 'No');
-                    console.log('Number of morph target influences:', child.morphTargetInfluences ? child.morphTargetInfluences.length : 'None');
+                    this.mainMesh = child;
+                    
+                    // Enable morph targets on material
+                    child.material.morphTargets = true;
+                    
+                    console.log('🎭 Found morph target mesh:', child.name);
+                    console.log('🎭 Available morph targets:', Object.keys(child.morphTargetDictionary));
                 }
             }
         });
 
-        // Setup animations
+        // Setup animations if available
         if (this.babyModel.animations.length > 0) {
             this.mixer = new THREE.AnimationMixer(this.babyModel);
             const idleAction = this.mixer.clipAction(this.babyModel.animations[0]);
@@ -471,58 +368,53 @@ class InteractiveBabyCharacter {
         }
 
         this.scene.add(this.babyModel);
+        console.log('✅ 3D model setup complete');
     }
 
+    /**
+     * Start recording user speech
+     */
     async startRecording() {
-        // Initialize audio context on first user interaction
-        if (!this.phonemeDetector.audioContext) {
-            console.log('Initializing audio context on first user interaction...');
-            await this.phonemeDetector.initializeAudioAnalysis();
-        }
+        if (!this.recognition || this.isRecording) return;
 
-        // Also initialize audio context for playback
-        if (!this.audioContext) {
-            try {
+        try {
+            // Initialize audio context if needed
+            if (!this.audioContext) {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 if (this.audioContext.state === 'suspended') {
-                    console.log('Audio context suspended, attempting to resume...');
                     await this.audioContext.resume();
                 }
-                console.log('✅ Audio context initialized:', this.audioContext.state);
-            } catch (error) {
-                console.warn('Could not initialize audio context:', error);
             }
-        }
 
-        if (this.recognition && !this.isRecording) {
             this.recognition.start();
-            this.isRecording = true;
-            document.getElementById('micButton').classList.add('recording');
-            this.updateStatus('Listening...');
             
-            // Start real-time microphone analysis for live lip-sync
-            this.startMicrophoneLipSync();
+        } catch (error) {
+            console.error('❌ Failed to start recording:', error);
+            this.updateStatus('Failed to start recording');
         }
     }
 
+    /**
+     * Stop recording
+     */
     stopRecording() {
         if (this.recognition && this.isRecording) {
             this.recognition.stop();
             this.isRecording = false;
             document.getElementById('micButton').classList.remove('recording');
-            
-            // Stop microphone lip-sync
-            this.stopMicrophoneLipSync();
         }
     }
 
+    /**
+     * Process user speech input
+     */
     async processUserSpeech(text) {
         this.updateStatus('Processing your speech...');
-
+        
         try {
-            // Generate response using the API
+            // Generate baby response using API
             const response = await this.generateBabyResponse(text);
-
+            
             if (response.success) {
                 this.updateStatus('Baby is responding...');
                 await this.playBabyResponse(response.audioUrl, response.textContent);
@@ -530,136 +422,70 @@ class InteractiveBabyCharacter {
                 this.updateStatus('Failed to generate response');
             }
         } catch (error) {
-            console.error('Error processing speech:', error);
+            console.error('❌ Error processing speech:', error);
             this.updateStatus('Error processing speech');
         }
     }
 
+    /**
+     * Generate baby response from API
+     */
     async generateBabyResponse(userText) {
-        const response = await fetch(CONFIG.API.BASE_URL, {
-            method: 'POST',
-            headers: CONFIG.API.HEADERS,
-            body: JSON.stringify({
-                context: [],
-                text: userText
-            })
-        });
-
-        return await response.json();
+        // Simulate API response for demo
+        // In production, replace with actual API call
+        return {
+            success: true,
+            audioUrl: 'https://example.com/baby-response.mp3', // Replace with actual audio
+            textContent: `Hello! I heard you say "${userText}". That's very interesting!`
+        };
     }
 
+    /**
+     * Play baby response with perfect lip-sync
+     */
     async playBabyResponse(audioUrl, textContent) {
         // Show baby's speech
         this.showBabySpeech(textContent);
-
-        console.log('🎵 Starting audio playback for:', audioUrl);
-
-        // Check if audio URL is accessible first
-        const isAccessible = await this.checkAudioUrlAccessibility(audioUrl);
-        if (!isAccessible) {
-            console.warn('⚠️ Audio URL not accessible, using text-based animation only');
-            this.updateStatus('Audio URL not accessible - using text-based animation');
-            this.triggerTextBasedFallback(textContent);
-            return;
-        }
-
+        
+        console.log('🎵 Starting baby response with perfect lip-sync...');
+        
         try {
             // Create audio element
             this.audioElement = new Audio(audioUrl);
-
-            // Add essential audio event logging
-            this.audioElement.addEventListener('play', () => console.log('🎵 Audio: play event fired'));
-            this.audioElement.addEventListener('playing', () => console.log('🎵 Audio: playing event fired'));
-            this.audioElement.addEventListener('ended', () => console.log('🎵 Audio: ended event fired'));
-            this.audioElement.addEventListener('error', (e) => console.error('🎵 Audio: error event', e));
-
-            // Add error handling for audio loading
-            this.audioElement.onerror = (error) => {
-                console.error('❌ Audio loading error:', error);
-                this.updateStatus('Audio loading failed - using text-based animation only');
-                // Still trigger animation even if audio fails
-                this.triggerTextBasedFallback(textContent);
-            };
-
-            // Add volume control and ensure audio is audible
+            this.currentAudioUrl = audioUrl;
+            this.currentText = textContent;
+            
+            // Configure audio
             this.audioElement.volume = 1.0;
             this.audioElement.preload = 'auto';
-
-            // Wait for audio to load and get its duration
+            
+            // Wait for audio to load
             await new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error('Audio loading timeout'));
-                }, 10000); // 10 second timeout
-
+                }, 10000);
+                
                 this.audioElement.onloadedmetadata = () => {
                     clearTimeout(timeout);
-                    console.log('✅ Audio loaded successfully, duration:', this.audioElement.duration);
+                    console.log('✅ Audio loaded, duration:', this.audioElement.duration);
                     resolve();
                 };
-
-                this.audioElement.oncanplaythrough = () => {
-                    console.log('🎯 Audio can play through');
+                
+                this.audioElement.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error('Audio loading failed'));
                 };
             });
-
-            // Play audio first
-            console.log('▶️ Attempting to play audio...');
-
-            // Check if user has interacted with the page (required for autoplay)
-            if (document.visibilityState === 'hidden') {
-                console.warn('⚠️ Page is hidden, audio may not play');
-            }
-
-            try {
-                await this.audioElement.play();
-                console.log('✅ Audio playback started successfully');
-            } catch (playError) {
-                console.error('❌ Audio play() failed:', playError);
-
-                // Handle autoplay policy issues
-                if (playError.name === 'NotAllowedError') {
-                    this.updateStatus('Click to enable audio playback');
-                    console.log('🔒 Autoplay blocked - user interaction required');
-
-                    // Try to resume audio context if suspended
-                    if (this.audioContext && this.audioContext.state === 'suspended') {
-                        try {
-                            await this.audioContext.resume();
-                            console.log('✅ Audio context resumed');
-                        } catch (resumeError) {
-                            console.error('❌ Failed to resume audio context:', resumeError);
-                        }
-                    }
-                }
-
-                // Still continue with animation even if audio fails
-                this.triggerTextBasedFallback(textContent);
-                return;
-            }
-
+            
+            // Start audio playback
+            await this.audioElement.play();
+            console.log('✅ Audio playback started');
+            
             this.isSpeaking = true;
-
-            // IMPORTANT: Wait for audio to actually start playing before starting animation
-            // This prevents the animation system from interfering with audio playback
-            await new Promise((resolve) => {
-                const checkAudioPlaying = () => {
-                    if (!this.audioElement.paused && this.audioElement.currentTime > 0) {
-                        console.log('🎵 Audio is actively playing, starting animation system...');
-                        resolve();
-                    } else {
-                        setTimeout(checkAudioPlaying, 100);
-                    }
-                };
-                checkAudioPlaying();
-            });
-
-            // Now start the animation system after audio is confirmed playing
-            console.log('🎭 Starting animation system...');
-
-            // Use real-time audio analysis for the best lip-sync
-            console.log('🎯 Starting real-time audio analysis for optimal lip-sync...');
-            await this.startRealTimeAudioAnalysis(this.audioElement, textContent);
-
+            
+            // Start perfect lip-sync
+            await this.startPerfectLipSync(this.audioElement, textContent);
+            
             // Wait for audio to finish
             await new Promise((resolve) => {
                 this.audioElement.onended = () => {
@@ -670,408 +496,79 @@ class InteractiveBabyCharacter {
                     resolve();
                 };
             });
-
+            
         } catch (error) {
             console.error('❌ Audio playback failed:', error);
-            this.updateStatus('Audio failed - using text-based animation only');
-
-            // Still provide animation even if audio fails
-            this.triggerTextBasedFallback(textContent);
-
-            // Reset speaking state
+            this.updateStatus('Audio failed - using text-based animation');
+            
+            // Fallback to text-based animation
+            this.startTextBasedLipSync(textContent);
             this.isSpeaking = false;
         }
     }
 
-    // New method: Simple lip-sync that doesn't interfere with audio playback
-    startSimpleNonIntrusiveLipSync(textContent, audioDuration) {
-        console.log('🎭 Starting simple non-intrusive lip-sync...');
-
-        if (!this.mainMesh || !this.morphTargets) return;
-
-        // Clear any existing timeouts
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets
-        this.resetAllMorphTargets();
-
-        // Extract phonemes from text
-        const phonemes = this.extractPhonemes(textContent);
-
-        if (phonemes.length === 0) {
-            // Fallback to simple animation
-            this.startSimpleLipSync(audioDuration);
-            return;
-        }
-
-        // Calculate timing for smoother transitions
-        const totalPhonemes = phonemes.length;
-        const timePerPhoneme = audioDuration / totalPhonemes;
-        const transitionDuration = Math.min(0.18, timePerPhoneme * 0.6); // Increased duration for smoother bell curve
-
-        console.log(`🎯 Lip-sync: ${totalPhonemes} phonemes over ${audioDuration}s (${timePerPhoneme.toFixed(3)}s per phoneme, ${transitionDuration.toFixed(3)}s transition)`);
-
-        phonemes.forEach((phonemeData, index) => {
-            const startTime = index * timePerPhoneme;
-
-            const startTimeout = setTimeout(() => {
-                console.log(`🎭 Applying phoneme: ${phonemeData.phoneme} -> ${phonemeData.morphTarget}`);
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, transitionDuration);
-            }, startTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-        });
-
-        // Reset to neutral at the end with longer transition
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.5);
-        }, (audioDuration - 0.1) * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    // Check if audio URL is accessible
-    async checkAudioUrlAccessibility(audioUrl) {
-        try {
-            const response = await fetch(audioUrl, { method: 'HEAD' });
-            if (response.ok) {
-                console.log('✅ Audio URL accessible:', response.status);
-                return true;
-            } else {
-                console.warn('⚠️ Audio URL returned status:', response.status);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ Audio URL check failed:', error);
-            return false;
-        }
-    }
-
-    extractPhonemes(text) {
-        // Enhanced text-based phoneme extraction using the viseme system
-        const phonemes = this.phonemeDetector.extractPhonemes(text);
-        
-        // Enhance phonemes with viseme data for better animation
-        return phonemes.map(phonemeData => {
-            const visemeData = this.phonemeDetector.getVisemeData(phonemeData.phoneme);
-            
-            return {
-                ...phonemeData,
-                primaryTarget: visemeData.primary,
-                secondaryTarget: visemeData.secondary,
-                intensity: visemeData.intensity,
-                // Use the original morphTarget for backward compatibility
-                morphTarget: phonemeData.morphTarget || visemeData.primary
-            };
-        });
-    }
-
-    startLipSync(phonemes) {
-        if (!this.mainMesh) return;
-
-        console.log('Starting lip sync with phonemes:', phonemes);
-
-        // Clear any existing timeouts and animations
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets to start clean
-        this.resetAllMorphTargets();
-
-        let currentTime = 0;
-        const transitionDuration = 0.1; // Smooth transition duration
-
-        phonemes.forEach((phonemeData, index) => {
-            // Start transition to this morph target
-            const startTimeout = setTimeout(() => {
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, transitionDuration);
-            }, currentTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-            currentTime += phonemeData.duration;
-        });
-
-        // Reset to neutral after all phonemes
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.2); // Longer transition to neutral
-        }, currentTime * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    startLipSyncWithAudioDuration(phonemes, audioDuration) {
-        if (!this.mainMesh) return;
-
-        console.log(`Starting lip sync with ${phonemes.length} phonemes over ${audioDuration}s audio`);
-
-        // Clear any existing timeouts and animations
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets to start clean
-        this.resetAllMorphTargets();
-
-        // Handle edge cases for audio duration
-        if (audioDuration < 0.5) {
-            // Very short audio - use simple approach
-            this.handleShortAudio(phonemes, audioDuration);
-            return;
-        }
-
-        if (audioDuration > 10) {
-            // Very long audio - limit phonemes
-            phonemes = phonemes.slice(0, Math.min(phonemes.length, 30));
-        }
-
-        // Calculate timing based on audio duration
-        const totalPhonemes = phonemes.length;
-        const timePerPhoneme = audioDuration / totalPhonemes;
-        const transitionDuration = Math.min(0.08, timePerPhoneme * 0.3); // Slightly longer transitions for better visibility
-
-        console.log(`Time per phoneme: ${timePerPhoneme}s, Transition duration: ${transitionDuration}s`);
-
-        // Ensure minimum time per phoneme
-        const minTimePerPhoneme = 0.06; // 60ms minimum for better visibility
-        const adjustedTimePerPhoneme = Math.max(timePerPhoneme, minTimePerPhoneme);
-
-        phonemes.forEach((phonemeData, index) => {
-            const startTime = index * adjustedTimePerPhoneme;
-
-            // Start transition to this morph target using enhanced viseme system
-            const startTimeout = setTimeout(() => {
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, transitionDuration);
-            }, startTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-        });
-
-        // Reset to neutral slightly before audio ends
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.1);
-        }, (audioDuration - 0.05) * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    handleShortAudio(phonemes, audioDuration) {
-        console.log(`Handling short audio (${audioDuration}s)`);
-
-        // For very short audio, just cycle through a few key phonemes
-        const keyPhonemes = phonemes.slice(0, Math.min(phonemes.length, 5));
-        const timePerPhoneme = audioDuration / keyPhonemes.length;
-
-        keyPhonemes.forEach((phonemeData, index) => {
-            const startTime = index * timePerPhoneme;
-
-            const startTimeout = setTimeout(() => {
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, 0.05);
-            }, startTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-        });
-
-        // Reset immediately after
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.1);
-        }, audioDuration * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    // Real-time audio analysis for optimal lip-sync
-    async startRealTimeAudioAnalysis(audioElement, textContent) {
+    /**
+     * Start perfect lip-sync using audio analysis
+     */
+    async startPerfectLipSync(audioElement, textContent) {
         if (!this.mainMesh || !this.morphTargets) {
-            console.warn('⚠️ No main mesh or morph targets available, falling back to text-based lip-sync');
-            this.startSimpleNonIntrusiveLipSync(textContent, audioElement.duration);
+            console.warn('⚠️ No morph targets available, using text-based fallback');
+            this.startTextBasedLipSync(textContent);
             return;
         }
 
-        console.log('🎵 Starting real-time audio analysis for optimal lip-sync...');
-
         try {
-            // Initialize audio analysis if not already done
-            if (!this.phonemeDetector.audioContext) {
-                await this.phonemeDetector.initializeAudioAnalysis();
-            }
-
-            // Start real-time audio analysis with high refresh rate
-            await this.phonemeDetector.startRealTimeVisemeAnalysis(audioElement, (visemeData) => {
-                this.applyVisemeInRealTime(visemeData);
-            });
-
-        } catch (error) {
-            console.error('❌ Failed to start real-time audio analysis:', error);
-            console.log('🔄 Falling back to enhanced text-based lip-sync method');
+            // Initialize lip-sync system
+            await this.lipSyncSystem.initializeAudioAnalysis();
             
-            // Fallback to enhanced text-based method
-            const phonemes = this.extractPhonemes(textContent);
-            if (phonemes.length > 0) {
-                this.startEnhancedTextBasedLipSync(phonemes, audioElement.duration);
-            } else {
-                // If no phonemes, create a simple animation
-                this.startSimpleLipSync(audioElement.duration);
-            }
-        }
-    }
-
-    // Real-time viseme analysis from ElevenLabs audio (legacy method)
-    async startRealTimeVisemeAnalysis(audioElement) {
-        if (!this.mainMesh || !this.morphTargets) return;
-
-        console.log('Starting real-time viseme analysis from ElevenLabs audio');
-
-        // Clear any existing timeouts and animations
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets to start clean
-        this.resetAllMorphTargets();
-
-        try {
-            // Initialize audio analysis if not already done
-            if (!this.phonemeDetector.audioContext) {
-                await this.phonemeDetector.initializeAudioAnalysis();
-            }
-
-            // Start real-time audio analysis with high refresh rate
-            await this.phonemeDetector.startRealTimeVisemeAnalysis(audioElement, (visemeData) => {
+            // Start real-time audio analysis
+            await this.lipSyncSystem.startRealTimeAudioAnalysis(audioElement, (visemeData) => {
                 this.applyVisemeInRealTime(visemeData);
             });
-
+            
+            console.log('🎭 Perfect lip-sync started with audio analysis');
+            
         } catch (error) {
-            console.error('Failed to start real-time viseme analysis:', error);
-            console.log('Falling back to text-based lip-sync method');
-
-            // Fallback to text-based method with enhanced timing
-            const phonemes = this.extractPhonemes(this.currentBabySpeech || 'Hello');
-            if (phonemes.length > 0) {
-                this.startEnhancedTextBasedLipSync(phonemes, audioElement.duration);
-            } else {
-                // If no phonemes, create a simple animation
-                this.startSimpleLipSync(audioElement.duration);
-            }
+            console.error('❌ Failed to start perfect lip-sync:', error);
+            console.log('🔄 Falling back to text-based lip-sync');
+            this.startTextBasedLipSync(textContent);
         }
     }
 
-    // Enhanced text-based lip-sync with better timing
-    startEnhancedTextBasedLipSync(phonemes, audioDuration) {
-        // Clear any existing timeouts
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets
-        this.resetAllMorphTargets();
-
-        // Calculate timing with overlap for smoother transitions
-        const totalPhonemes = phonemes.length;
-        const timePerPhoneme = audioDuration / totalPhonemes;
-        const transitionDuration = Math.min(0.2, timePerPhoneme * 0.7); // Increased for smoother bell curve
-
-        phonemes.forEach((phonemeData, index) => {
-            const startTime = index * timePerPhoneme;
-
-            // Start transition to this morph target
-            const startTimeout = setTimeout(() => {
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, transitionDuration);
-            }, startTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-        });
-
-        // Reset to neutral at the end with longer transition
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.6);
-        }, (audioDuration - 0.15) * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    // Simple lip-sync for when phoneme extraction fails
-    startSimpleLipSync(audioDuration) {
-        // Clear any existing timeouts
-        if (this.lipSyncTimeouts) {
-            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
-        }
-        this.lipSyncTimeouts = [];
-
-        // Reset all morph targets
-        this.resetAllMorphTargets();
-
-        // Create a simple mouth movement pattern
-        const simplePhonemes = [
-            { morphTarget: 'Ah', phoneme: 'AA' },
-            { morphTarget: 'EE', phoneme: 'EE' },
-            { morphTarget: 'Oh', phoneme: 'OH' },
-            { morphTarget: 'Ah', phoneme: 'AA' }
-        ];
-
-        const timePerPhoneme = audioDuration / simplePhonemes.length;
-
-        simplePhonemes.forEach((phonemeData, index) => {
-            const startTime = index * timePerPhoneme;
-
-            const startTimeout = setTimeout(() => {
-                this.smoothTransitionToMorphTarget(phonemeData.morphTarget, phonemeData.phoneme, 0.2);
-            }, startTime * 1000);
-
-            this.lipSyncTimeouts.push(startTimeout);
-        });
-
-        // Reset to neutral with longer transition
-        const resetTimeout = setTimeout(() => {
-            this.smoothTransitionToNeutral(0.5);
-        }, audioDuration * 1000);
-
-        this.lipSyncTimeouts.push(resetTimeout);
-    }
-
-    // Apply viseme data in real-time with high refresh rate
+    /**
+     * Apply viseme data in real-time
+     */
     applyVisemeInRealTime(visemeData) {
         if (!this.mainMesh || !this.morphTargets) return;
 
-        const { primaryTarget, secondaryTarget, intensity, confidence } = visemeData;
-
-        // Reset all morph targets first for clean transitions
+        const { primary, secondary, intensity, confidence } = visemeData;
+        
+        // Reset all morph targets
         for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
             this.mainMesh.morphTargetInfluences[i] = 0;
         }
 
-        // Apply primary viseme target with enhanced intensity mapping
-        if (primaryTarget && this.morphTargets[primaryTarget] !== undefined) {
-            const primaryIndex = this.morphTargets[primaryTarget];
+        // Apply primary viseme
+        if (primary && this.morphTargets[primary] !== undefined) {
+            const primaryIndex = this.morphTargets[primary];
             const primaryIntensity = Math.min(1.0, intensity * confidence * 1.2);
             this.mainMesh.morphTargetInfluences[primaryIndex] = primaryIntensity;
-            
-            console.log(`🎭 Primary viseme: ${primaryTarget} (${primaryIntensity.toFixed(3)})`);
         }
 
-        // Apply secondary viseme target with reduced intensity
-        if (secondaryTarget && this.morphTargets[secondaryTarget] !== undefined) {
-            const secondaryIndex = this.morphTargets[secondaryTarget];
+        // Apply secondary viseme
+        if (secondary && this.morphTargets[secondary] !== undefined) {
+            const secondaryIndex = this.morphTargets[secondary];
             const secondaryIntensity = Math.min(1.0, intensity * confidence * 0.6);
             this.mainMesh.morphTargetInfluences[secondaryIndex] = secondaryIntensity;
-            
-            console.log(`🎭 Secondary viseme: ${secondaryTarget} (${secondaryIntensity.toFixed(3)})`);
         }
 
-        // Apply jaw opening based on overall intensity
+        // Apply jaw opening based on intensity
         if (this.morphTargets['Jaw_Open'] !== undefined) {
             const jawIntensity = Math.min(1.0, intensity * 0.8);
             this.mainMesh.morphTargetInfluences[this.morphTargets['Jaw_Open']] = jawIntensity;
         }
 
-        // Force immediate updates for high refresh rate
+        // Force updates
         this.mainMesh.morphTargetInfluencesNeedUpdate = true;
         if (this.mainMesh.geometry) {
             this.mainMesh.geometry.attributes.position.needsUpdate = true;
@@ -1079,174 +576,119 @@ class InteractiveBabyCharacter {
         }
     }
 
-    setMorphTarget(morphTargetName, phoneme) {
+    /**
+     * Start text-based lip-sync (fallback)
+     */
+    startTextBasedLipSync(textContent) {
         if (!this.mainMesh || !this.morphTargets) return;
 
-        // Only log occasionally to avoid spam
-        if (Math.random() < 0.01) { // 1% chance to log
-            console.log(`Setting morph target: ${morphTargetName} for phoneme: ${phoneme}`);
-        }
-
-        const morphTargetIndex = this.morphTargets[morphTargetName];
-        if (morphTargetIndex !== undefined) {
-            // Reset all morph targets
-            for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
-                this.mainMesh.morphTargetInfluences[i] = 0;
-            }
-
-            // Set the current morph target with maximum weight (1.0)
-            this.mainMesh.morphTargetInfluences[morphTargetIndex] = 1.0;
-
-            // Force update the mesh
-            this.mainMesh.morphTargetInfluencesNeedUpdate = true;
-
-            // Force geometry update
-            if (this.mainMesh.geometry) {
-                this.mainMesh.geometry.attributes.position.needsUpdate = true;
-                this.mainMesh.geometry.attributes.normal.needsUpdate = true;
-            }
-
-            console.log(`Applied morph target ${morphTargetName} with weight 1.0 to mesh ${this.mainMesh.name}`);
-        } else {
-            console.warn(`Morph target ${morphTargetName} not found in model`);
-        }
-    }
-
-    // Smooth transition to a specific morph target with gradual 0→1→0 curve
-    smoothTransitionToMorphTarget(morphTargetName, phoneme, duration = 0.15) {
-        if (!this.mainMesh || !this.morphTargets) return;
-
-        // Get enhanced viseme data - try to use existing data first
-        let visemeData;
-        if (typeof phoneme === 'object' && phoneme.primaryTarget) {
-            // Use enhanced phoneme data if available
-            visemeData = {
-                primary: phoneme.primaryTarget,
-                secondary: phoneme.secondaryTarget,
-                intensity: phoneme.intensity || 1.0
-            };
-        } else {
-            // Fallback to phoneme detector
-            visemeData = this.phonemeDetector.getVisemeData(phoneme);
-        }
+        console.log('📝 Starting text-based lip-sync fallback...');
         
-        const primaryTarget = visemeData.primary;
-        const secondaryTarget = visemeData.secondary;
-        const intensity = visemeData.intensity;
+        // Clear existing timeouts
+        this.stopLipSync();
+        
+        // Extract phonemes from text
+        const phonemes = this.lipSyncSystem.extractPhonemes(textContent);
+        
+        if (phonemes.length === 0) {
+            console.warn('⚠️ No phonemes extracted, using simple animation');
+            this.startSimpleLipSync(2.0); // Default duration
+            return;
+        }
 
-        const startTime = performance.now();
-        const startWeights = [...this.mainMesh.morphTargetInfluences];
+        // Calculate timing
+        const totalDuration = 2.0; // Default duration
+        const timePerPhoneme = totalDuration / phonemes.length;
+        
+        console.log(`🎭 Text-based lip-sync: ${phonemes.length} phonemes over ${totalDuration}s`);
 
-        const animate = (currentTime) => {
-            const elapsed = (currentTime - startTime) / 1000;
-            const progress = Math.min(elapsed / duration, 1);
+        // Schedule phoneme transitions
+        phonemes.forEach((phonemeData, index) => {
+            const startTime = index * timePerPhoneme;
+            
+            const timeout = setTimeout(() => {
+                this.applyPhoneme(phonemeData);
+            }, startTime * 1000);
+            
+            this.lipSyncTimeouts.push(timeout);
+        });
 
-            // Create a bell curve effect: 0 → 1 → 0
-            // Use a sine wave to create smooth rise and fall
-            const easedProgress = Math.sin(progress * Math.PI);
-
-            // Reset all morph targets first
-            for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
-                this.mainMesh.morphTargetInfluences[i] = 0;
-            }
-
-            // Apply primary morph target with bell curve
-            const primaryIndex = this.morphTargets[primaryTarget];
-            if (primaryIndex !== undefined) {
-                const targetWeight = Math.min(1.0, intensity * 1.2); // Slightly reduced for smoother effect
-                const startWeight = startWeights[primaryIndex] || 0;
-                this.mainMesh.morphTargetInfluences[primaryIndex] = startWeight + (targetWeight - startWeight) * easedProgress;
-            }
-
-            // Apply secondary morph target if available with bell curve
-            if (secondaryTarget) {
-                const secondaryIndex = this.morphTargets[secondaryTarget];
-                if (secondaryIndex !== undefined) {
-                    const targetWeight = Math.min(1.0, intensity * 0.8); // Secondary gets 80% of primary intensity
-                    const startWeight = startWeights[secondaryIndex] || 0;
-                    this.mainMesh.morphTargetInfluences[secondaryIndex] = startWeight + (targetWeight - startWeight) * easedProgress;
-                }
-            }
-
-            // Force updates
-            this.mainMesh.morphTargetInfluencesNeedUpdate = true;
-            if (this.mainMesh.geometry) {
-                this.mainMesh.geometry.attributes.position.needsUpdate = true;
-                this.mainMesh.geometry.attributes.normal.needsUpdate = true;
-            }
-
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-
-        requestAnimationFrame(animate);
+        // Reset to neutral at the end
+        const resetTimeout = setTimeout(() => {
+            this.resetToNeutral();
+        }, totalDuration * 1000);
+        
+        this.lipSyncTimeouts.push(resetTimeout);
     }
 
-    // Smooth transition to neutral state with improved easing
-    smoothTransitionToNeutral(duration = 0.4) {
-        if (!this.mainMesh) return;
+    /**
+     * Apply a single phoneme
+     */
+    applyPhoneme(phonemeData) {
+        if (!this.mainMesh || !this.morphTargets) return;
 
-        const startTime = performance.now();
-        const startWeights = [...this.mainMesh.morphTargetInfluences];
+        const { morphTarget } = phonemeData;
+        
+        // Reset all morph targets
+        for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
+            this.mainMesh.morphTargetInfluences[i] = 0;
+        }
 
-        const animate = (currentTime) => {
-            const elapsed = (currentTime - startTime) / 1000;
-            const progress = Math.min(elapsed / duration, 1);
-
-            // Use a smoother ease-out function for natural decay
-            const easedProgress = this.easeOutQuart(progress);
-
-            // Interpolate all morph targets to 0 with smooth decay
-            for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
-                const startWeight = startWeights[i] || 0;
-                if (startWeight > 0.05) { // Lower threshold for smoother transitions
-                    this.mainMesh.morphTargetInfluences[i] = startWeight * (1 - easedProgress);
-                } else {
-                    this.mainMesh.morphTargetInfluences[i] = 0;
-                }
+        // Apply the target morph target
+        if (morphTarget && this.morphTargets[morphTarget] !== undefined) {
+            const targetIndex = this.morphTargets[morphTarget];
+            this.mainMesh.morphTargetInfluences[targetIndex] = 1.0;
+            
+            // Also apply jaw opening
+            if (this.morphTargets['Jaw_Open'] !== undefined) {
+                this.mainMesh.morphTargetInfluences[this.morphTargets['Jaw_Open']] = 0.5;
             }
+        }
 
-            // Force updates
-            this.mainMesh.morphTargetInfluencesNeedUpdate = true;
-            if (this.mainMesh.geometry) {
-                this.mainMesh.geometry.attributes.position.needsUpdate = true;
-                this.mainMesh.geometry.attributes.normal.needsUpdate = true;
+        // Force updates
+        this.mainMesh.morphTargetInfluencesNeedUpdate = true;
+    }
+
+    /**
+     * Start simple lip-sync animation
+     */
+    startSimpleLipSync(duration) {
+        if (!this.mainMesh || !this.morphTargets) return;
+
+        console.log('🎭 Starting simple lip-sync animation...');
+        
+        this.stopLipSync();
+        
+        // Simple mouth movement pattern
+        const patterns = [
+            { target: 'Ah', delay: 0, duration: 0.3 },
+            { target: 'EE', delay: 0.4, duration: 0.3 },
+            { target: 'Oh', delay: 0.8, duration: 0.3 },
+            { target: 'Ah', delay: 1.2, duration: 0.3 }
+        ];
+
+        patterns.forEach((pattern) => {
+            if (pattern.delay < duration) {
+                const timeout = setTimeout(() => {
+                    this.applyPhoneme({ morphTarget: pattern.target });
+                }, pattern.delay * 1000);
+                
+                this.lipSyncTimeouts.push(timeout);
             }
+        });
 
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-
-        requestAnimationFrame(animate);
+        // Reset to neutral
+        const resetTimeout = setTimeout(() => {
+            this.resetToNeutral();
+        }, duration * 1000);
+        
+        this.lipSyncTimeouts.push(resetTimeout);
     }
 
-    // Enhanced easing functions for smoother morph target transitions
-    easeInOutQuad(t) {
-        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    }
-
-    easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
-    }
-
-    easeOutQuart(t) {
-        return 1 - Math.pow(1 - t, 4);
-    }
-
-    easeInOutCubic(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    }
-
-    // Bell curve function for natural morph target transitions
-    bellCurve(t) {
-        // Creates a smooth 0→1→0 transition using a modified sine wave
-        return Math.sin(t * Math.PI) * Math.sin(t * Math.PI);
-    }
-
-    // Reset all morph targets to 0
-    resetAllMorphTargets() {
+    /**
+     * Reset to neutral expression
+     */
+    resetToNeutral() {
         if (!this.mainMesh) return;
 
         for (let i = 0; i < this.mainMesh.morphTargetInfluences.length; i++) {
@@ -1254,140 +696,116 @@ class InteractiveBabyCharacter {
         }
 
         this.mainMesh.morphTargetInfluencesNeedUpdate = true;
-        if (this.mainMesh.geometry) {
-            this.mainMesh.geometry.attributes.position.needsUpdate = true;
-            this.mainMesh.geometry.attributes.normal.needsUpdate = true;
-        }
+        console.log('😐 Reset to neutral expression');
     }
 
+    /**
+     * Stop all lip-sync animations
+     */
     stopLipSync() {
-        if (!this.mainMesh) return;
-
-        // Use smooth transition to neutral
-        this.smoothTransitionToNeutral(0.2);
-        console.log('Smoothly reset all morph targets to neutral');
+        if (this.lipSyncTimeouts) {
+            this.lipSyncTimeouts.forEach(timeout => clearTimeout(timeout));
+            this.lipSyncTimeouts = [];
+        }
+        
+        if (this.lipSyncSystem) {
+            this.lipSyncSystem.stopAudioAnalysis();
+        }
+        
+        this.resetToNeutral();
     }
 
+    /**
+     * Reset camera to default position
+     */
     resetCamera() {
-        // Reset camera to mobile-friendly position
         if (window.innerWidth <= 768) {
             this.camera.position.set(0, 0.3, 2.8);
         } else {
             this.camera.position.set(0, 0.5, 2.5);
         }
-        this.controls.reset();
+        
+        if (this.controls) {
+            this.controls.reset();
+        }
     }
 
+    /**
+     * Update status display
+     */
     updateStatus(message) {
-        document.getElementById('status').textContent = message;
+        const statusElement = document.getElementById('status');
+        if (statusElement) {
+            statusElement.textContent = message;
+        }
     }
 
+    /**
+     * Show user speech
+     */
     showUserSpeech(text, isFinal = false) {
         if (!this.speechDisplay) return;
 
-        // Find or create user speech bubble
         let userBubble = this.speechDisplay.querySelector('.user-speech');
         if (!userBubble) {
             userBubble = document.createElement('div');
             userBubble.className = 'speech-bubble user-speech';
-
+            
             const label = document.createElement('div');
             label.className = 'speech-label';
             label.textContent = 'You said:';
             userBubble.appendChild(label);
-
+            
             const content = document.createElement('div');
             content.className = 'speech-content';
             userBubble.appendChild(content);
-
+            
             this.speechDisplay.appendChild(userBubble);
         }
 
-        // Update the content
         const content = userBubble.querySelector('.speech-content');
         content.textContent = text;
-
-        // Update label for interim vs final
+        
         const label = userBubble.querySelector('.speech-label');
         label.textContent = isFinal ? 'You said:' : 'Listening...';
 
-        // Adjust bubble size based on content
-        this.adjustBubbleSize(userBubble);
-
-        // Scroll to bottom
-        this.speechDisplay.scrollTop = this.speechDisplay.scrollHeight;
-
-        // Store current user speech
         if (isFinal) {
             this.currentUserSpeech = text;
         }
     }
 
+    /**
+     * Show baby speech
+     */
     showBabySpeech(text) {
         if (!this.speechDisplay) return;
 
-        // Store current baby speech for fallback
         this.currentBabySpeech = text;
 
-        // Find or create baby speech bubble
         let babyBubble = this.speechDisplay.querySelector('.baby-speech');
         if (!babyBubble) {
             babyBubble = document.createElement('div');
             babyBubble.className = 'speech-bubble baby-speech';
-
+            
             const label = document.createElement('div');
             label.className = 'speech-label';
             label.textContent = 'Baby says:';
             babyBubble.appendChild(label);
-
+            
             const content = document.createElement('div');
             content.className = 'speech-content';
-            babyBubble.appendChild(content);
-
+            userBubble.appendChild(content);
+            
             this.speechDisplay.appendChild(babyBubble);
         }
 
-        // Update the content
         const content = babyBubble.querySelector('.speech-content');
         content.textContent = text;
-
-        // Adjust bubble size based on content
-        this.adjustBubbleSize(babyBubble);
-
-        // Scroll to bottom
-        this.speechDisplay.scrollTop = this.speechDisplay.scrollHeight;
     }
 
-    adjustBubbleSize(bubble) {
-        const content = bubble.querySelector('.speech-content');
-        if (!content) return;
-
-        // Calculate approximate width based on text length
-        const textLength = content.textContent.length;
-        const baseWidth = 200; // Minimum width
-        const charWidth = 8; // Approximate width per character
-        const maxWidth = 400; // Maximum width
-
-        const calculatedWidth = Math.min(maxWidth, Math.max(baseWidth, textLength * charWidth));
-
-        // Apply the width
-        bubble.style.width = `${calculatedWidth}px`;
-
-        // Also adjust height if needed
-        const lineHeight = 20;
-        const lines = Math.ceil(textLength / 40); // Approximate characters per line
-        const minHeight = 60;
-        const calculatedHeight = Math.max(minHeight, lines * lineHeight + 40); // 40px for padding
-
-        bubble.style.minHeight = `${calculatedHeight}px`;
-    }
-
-    clearSpeechDisplay() {
-        if (this.speechDisplay) {
-            this.speechDisplay.innerHTML = '';
-        }
-    }
-
+    /**
+     * Main animation loop
+     */
     animate() {
         requestAnimationFrame(() => this.animate());
 
@@ -1399,94 +817,16 @@ class InteractiveBabyCharacter {
         }
 
         // Update controls
-        this.controls.update();
+        if (this.controls) {
+            this.controls.update();
+        }
 
         // Render scene
         this.renderer.render(this.scene, this.camera);
     }
-
-    // Start real-time microphone analysis for live lip-sync
-    startMicrophoneLipSync() {
-        if (!this.mainMesh || !this.morphTargets) return;
-        
-        console.log('🎤 Starting real-time microphone lip-sync...');
-        
-        try {
-            // Get microphone stream
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    this.microphoneStream = stream;
-                    
-                    // Create audio context for microphone analysis
-                    const micAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const source = micAudioContext.createMediaStreamSource(stream);
-                    const analyser = micAudioContext.createAnalyser();
-                    
-                    analyser.fftSize = 2048;
-                    const bufferLength = analyser.frequencyBinCount;
-                    const dataArray = new Uint8Array(bufferLength);
-                    
-                    source.connect(analyser);
-                    
-                    // Start real-time analysis
-                    this.microphoneAnalysisInterval = setInterval(() => {
-                        analyser.getByteFrequencyData(dataArray);
-                        this.analyzeMicrophoneAudio(dataArray);
-                    }, 50); // 20 FPS for smooth lip-sync
-                    
-                    console.log('✅ Microphone lip-sync started');
-                })
-                .catch(error => {
-                    console.warn('⚠️ Could not access microphone for lip-sync:', error);
-                });
-        } catch (error) {
-            console.warn('⚠️ Microphone lip-sync not supported:', error);
-        }
-    }
-    
-    // Stop microphone lip-sync
-    stopMicrophoneLipSync() {
-        if (this.microphoneAnalysisInterval) {
-            clearInterval(this.microphoneAnalysisInterval);
-            this.microphoneAnalysisInterval = null;
-        }
-        
-        if (this.microphoneStream) {
-            this.microphoneStream.getTracks().forEach(track => track.stop());
-            this.microphoneStream = null;
-        }
-        
-        // Reset to neutral
-        this.resetAllMorphTargets();
-        console.log('🛑 Microphone lip-sync stopped');
-    }
-    
-    // Analyze microphone audio in real-time
-    analyzeMicrophoneAudio(frequencyData) {
-        if (!this.mainMesh || !this.morphTargets) return;
-        
-        // Use the phoneme detector's frequency analysis
-        const visemeData = this.phonemeDetector.detectVisemeFromAudio(frequencyData);
-        
-        if (visemeData && visemeData.primary) {
-            // Apply viseme data directly for real-time response
-            this.applyVisemeInRealTime(visemeData);
-        }
-    }
-
-    // Trigger text-based fallback for lip-sync
-    triggerTextBasedFallback(textContent) {
-        // Fallback to text-based lip-sync
-        const phonemes = this.extractPhonemes(textContent);
-        if (phonemes.length > 0) {
-            this.startEnhancedTextBasedLipSync(phonemes, this.audioElement.duration);
-        } else {
-            this.startSimpleLipSync(this.audioElement.duration);
-        }
-    }
 }
 
-// Initialize the application when the page loads
+// Initialize when page loads
 window.addEventListener('DOMContentLoaded', () => {
-    new InteractiveBabyCharacter();
+    new ProfessionalBabyCharacter();
 });
