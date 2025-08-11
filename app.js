@@ -55,29 +55,58 @@ class ProfessionalBabyCharacter {
      * Initialize the application
      */
     async init() {
-        console.log('🚀 Initializing Professional Baby Character...');
-        
-        this.setupScene();
-        this.setupCamera();
-        this.setupRenderer();
-        this.setupControls();
-        this.setupSpeechRecognition();
-        this.setupEventListeners();
-        
-        // Load the 3D model
-        await this.loadBabyModel();
-        
-        // Initialize speech display
-        this.speechDisplay = document.getElementById('speech-display');
-        
-        // Start animation loop
-        this.animate();
-        
-        // Hide loading screen
-        document.getElementById('loading').classList.add('hidden');
-        this.updateStatus('Ready! Click 🎤 to speak or test the lip-sync system.');
-        
-        console.log('✅ Professional Baby Character initialized successfully');
+        try {
+            console.log('🚀 Initializing Professional Baby Character...');
+            console.log('🔍 Checking Three.js availability:', typeof THREE);
+            console.log('🔍 Checking ProfessionalLipSyncSystem availability:', typeof ProfessionalLipSyncSystem);
+            
+            this.setupScene();
+            console.log('✅ Scene setup complete');
+            
+            this.setupCamera();
+            console.log('✅ Camera setup complete');
+            
+            this.setupRenderer();
+            console.log('✅ Renderer setup complete');
+            
+            this.setupControls();
+            console.log('✅ Controls setup complete');
+            
+            this.setupSpeechRecognition();
+            console.log('✅ Speech recognition setup complete');
+            
+            this.setupEventListeners();
+            console.log('✅ Event listeners setup complete');
+            
+            // Load the 3D model
+            console.log('🔄 Loading 3D model...');
+            await this.loadBabyModel();
+            console.log('✅ 3D model loaded');
+            
+            // Initialize speech display
+            this.speechDisplay = document.getElementById('speech-display');
+            console.log('✅ Speech display initialized');
+            
+            // Start animation loop
+            this.animate();
+            console.log('✅ Animation loop started');
+            
+            // Hide loading screen
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+                console.log('✅ Loading screen hidden');
+            } else {
+                console.warn('⚠️ Loading element not found');
+            }
+            
+            this.updateStatus('Ready! Click 🎤 to speak or test the lip-sync system.');
+            console.log('✅ Professional Baby Character initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Initialization failed:', error);
+            this.updateStatus('Initialization failed: ' + error.message);
+        }
     }
 
     /**
@@ -121,19 +150,51 @@ class ProfessionalBabyCharacter {
      * Setup renderer
      */
     setupRenderer() {
-        this.renderer = new THREE.WebGLRenderer({
-            canvas: document.getElementById('canvas'),
-            antialias: true,
-            alpha: true
-        });
-        
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0;
+        try {
+            const canvas = document.getElementById('canvas');
+            console.log('🔍 Canvas element:', canvas);
+            
+            if (!canvas) {
+                throw new Error('Canvas element not found');
+            }
+            
+            // Check WebGL support
+            if (!window.WebGLRenderingContext) {
+                throw new Error('WebGL not supported');
+            }
+            
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            
+            console.log('✅ WebGL renderer created');
+            
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Handle different Three.js versions
+            if (THREE.sRGBEncoding !== undefined) {
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+            } else if (this.renderer.outputColorSpace !== undefined) {
+                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+            }
+            
+            if (THREE.ACESFilmicToneMapping !== undefined) {
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            }
+            
+            this.renderer.toneMappingExposure = 1.0;
+            
+            console.log('✅ Renderer setup complete');
+            
+        } catch (error) {
+            console.error('❌ Renderer setup failed:', error);
+            throw error;
+        }
     }
 
     /**
@@ -807,22 +868,30 @@ class ProfessionalBabyCharacter {
      * Main animation loop
      */
     animate() {
-        requestAnimationFrame(() => this.animate());
+        try {
+            requestAnimationFrame(() => this.animate());
 
-        const delta = this.clock.getDelta();
+            const delta = this.clock.getDelta();
 
-        // Update animation mixer
-        if (this.mixer) {
-            this.mixer.update(delta);
+            // Update animation mixer
+            if (this.mixer) {
+                this.mixer.update(delta);
+            }
+
+            // Update controls
+            if (this.controls) {
+                this.controls.update();
+            }
+
+            // Render scene
+            if (this.renderer && this.scene && this.camera) {
+                this.renderer.render(this.scene, this.camera);
+            } else {
+                console.warn('⚠️ Missing renderer, scene, or camera for rendering');
+            }
+        } catch (error) {
+            console.error('❌ Animation loop error:', error);
         }
-
-        // Update controls
-        if (this.controls) {
-            this.controls.update();
-        }
-
-        // Render scene
-        this.renderer.render(this.scene, this.camera);
     }
 }
 
