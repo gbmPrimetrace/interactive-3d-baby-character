@@ -359,8 +359,8 @@ class InteractiveBabyCharacter {
         this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y,
-            CONFIG.SCENE.MODEL_POSITION.z - 50  // Move down by 50 units in Z axis
+            CONFIG.SCENE.MODEL_POSITION.y - 20, // Move down by 20 units in Y axis
+            CONFIG.SCENE.MODEL_POSITION.z
         );
 
         // Apply MeshStandardMaterial to all meshes and enable shadows
@@ -390,7 +390,7 @@ class InteractiveBabyCharacter {
                         try {
                             const path = alphaMapPaths[i];
                             console.log(`Trying to load alpha map from: ${path}`);
-                            
+
                             // Use synchronous loading for immediate access
                             alphaMap = textureLoader.load(path);
                             console.log(`✅ Alpha map loaded successfully from: ${path}`);
