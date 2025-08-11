@@ -137,15 +137,20 @@ class ProfessionalBabyCharacter {
     setupScene() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x1a1a1a);
+        console.log('🎨 Scene background set to:', this.scene.background);
         
         // Add ambient lighting
         const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         this.scene.add(ambientLight);
+        console.log('💡 Ambient light added');
         
         // Add directional lighting
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 5, 5);
         this.scene.add(directionalLight);
+        console.log('💡 Directional light added at:', directionalLight.position);
+        
+        console.log('🎨 Scene setup complete with', this.scene.children.length, 'children');
     }
 
     /**
@@ -407,7 +412,8 @@ class ProfessionalBabyCharacter {
 
         // Scale and position the model
         this.babyModel.scale.setScalar(0.01);
-        this.babyModel.position.set(0, -20, 0);
+        this.babyModel.position.set(0, 0, 0); // Center the model
+        console.log('🎯 Model positioned at:', this.babyModel.position);
 
         // Apply materials and find morph targets
         this.babyModel.traverse((child) => {
@@ -451,7 +457,17 @@ class ProfessionalBabyCharacter {
         }
 
         this.scene.add(this.babyModel);
-        console.log('✅ 3D model setup complete');
+        console.log('✅ 3D model added to scene');
+        
+        // Add a simple test cube to verify rendering
+        const testGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const testMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const testCube = new THREE.Mesh(testGeometry, testMaterial);
+        testCube.position.set(2, 0, 0); // Position to the right of the baby
+        this.scene.add(testCube);
+        console.log('🧪 Test red cube added to scene');
+        
+        console.log('✅ 3D model setup complete. Scene now has', this.scene.children.length, 'children');
     }
 
     /**
@@ -907,7 +923,16 @@ class ProfessionalBabyCharacter {
 
             // Render scene
             if (this.renderer && this.scene && this.camera) {
+                // Debug camera and model positions
+                if (this.babyModel && this.frameCount % 60 === 0) { // Log every 60 frames
+                    console.log('🎯 Camera position:', this.camera.position);
+                    console.log('🎯 Model position:', this.babyModel.position);
+                    console.log('🎯 Model visible:', this.babyModel.visible);
+                    console.log('🎯 Scene children count:', this.scene.children.length);
+                }
+                
                 this.renderer.render(this.scene, this.camera);
+                this.frameCount = (this.frameCount || 0) + 1;
             } else {
                 console.warn('⚠️ Missing renderer, scene, or camera for rendering');
             }
