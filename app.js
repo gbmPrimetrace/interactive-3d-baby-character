@@ -136,7 +136,7 @@ class ProfessionalBabyCharacter {
      */
     setupScene() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a1a);
+        this.scene.background = new THREE.Color(0xE6E8E6);
         console.log('🎨 Scene background set to:', this.scene.background);
         
         // Add ambient lighting
@@ -418,20 +418,69 @@ class ProfessionalBabyCharacter {
         // Apply materials and find morph targets
         this.babyModel.traverse((child) => {
             if (child.isMesh) {
-                // Apply standard material
-                const standardMaterial = new THREE.MeshStandardMaterial({
-                    color: child.material?.color || 0xffffff,
-                    map: child.material?.map || null,
-                    normalMap: child.material?.normalMap || null,
-                    roughnessMap: child.material?.roughnessMap || null,
-                    aoMap: child.material?.aoMap || null,
-                    transparent: child.material?.transparent || false,
-                    opacity: child.material?.opacity !== undefined ? child.material.opacity : 1,
-                    roughness: 0.5,
-                    metalness: 0.1
-                });
-
-                child.material = standardMaterial;
+                // Check if this is the body mesh that needs alpha map
+                const isBodyMesh = child.name.toLowerCase().includes('body') || 
+                                 (child.material && child.material.name && child.material.name.toLowerCase().includes('body'));
+                
+                if (isBodyMesh) {
+                    console.log('🎨 Processing body mesh:', child.name);
+                    
+                    // Load alpha map for body mesh
+                    const textureLoader = new THREE.TextureLoader();
+                    const alphaMapPaths = [
+                        'src/body__Opacity.jpg',
+                        './src/body__Opacity.jpg',
+                        'body__Opacity.jpg',
+                        './body__Opacity.jpg'
+                    ];
+                    
+                    let alphaMap = null;
+                    for (let i = 0; i < alphaMapPaths.length; i++) {
+                        try {
+                            const path = alphaMapPaths[i];
+                            console.log(`🔄 Trying to load alpha map from: ${path}`);
+                            alphaMap = textureLoader.load(path);
+                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
+                            break;
+                        } catch (error) {
+                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
+                        }
+                    }
+                    
+                    // Create material with alpha map
+                    const bodyMaterial = new THREE.MeshStandardMaterial({
+                        color: child.material?.color || 0xffffff,
+                        map: child.material?.map || null,
+                        normalMap: child.material?.normalMap || null,
+                        roughnessMap: child.material?.roughnessMap || null,
+                        aoMap: child.material?.aoMap || null,
+                        alphaMap: alphaMap,
+                        alphaTest: 0.5,
+                        transparent: true,
+                        side: THREE.DoubleSide,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
+                    
+                    child.material = bodyMaterial;
+                    console.log(`✅ Body material created with alpha map:`, alphaMap ? 'Loaded' : 'Not loaded');
+                } else {
+                    // Apply standard material for other meshes
+                    const standardMaterial = new THREE.MeshStandardMaterial({
+                        color: child.material?.color || 0xffffff,
+                        map: child.material?.map || null,
+                        normalMap: child.material?.normalMap || null,
+                        roughnessMap: child.material?.roughnessMap || null,
+                        aoMap: child.material?.aoMap || null,
+                        transparent: child.material?.transparent || false,
+                        opacity: child.material?.opacity !== undefined ? child.material.opacity : 1,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
+                    
+                    child.material = standardMaterial;
+                }
+                
                 child.castShadow = true;
                 child.receiveShadow = true;
 
