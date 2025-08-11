@@ -176,23 +176,23 @@ class InteractiveBabyCharacter {
     setupControls() {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = 0.2;
         this.controls.screenSpacePanning = false;
 
         // Enable zoom and pan for better model exploration
         this.controls.enableZoom = true;
-        this.controls.enablePan = true;
+        this.controls.enablePan = false;
 
         // Set reasonable distance limits for zooming
-        this.controls.minDistance = 1.0;
-        this.controls.maxDistance = 5.0;
+        this.controls.minDistance = 3.5;
+        this.controls.maxDistance = 5;
         this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
 
-        // Mobile-specific settings
+       /* // Mobile-specific settings
         if (window.innerWidth <= 768) {
             this.controls.enableDamping = false; // Disable damping on mobile for better performance
             this.controls.rotateSpeed = 0.8; // Slightly slower rotation on mobile
-        }
+        }*/
     }
 
     setupSpeechRecognition() {
@@ -359,7 +359,7 @@ class InteractiveBabyCharacter {
         this.babyModel.scale.setScalar(CONFIG.SCENE.MODEL_SCALE);
         this.babyModel.position.set(
             CONFIG.SCENE.MODEL_POSITION.x,
-            CONFIG.SCENE.MODEL_POSITION.y - 20, // Move down by 20 units in Y axis
+            CONFIG.SCENE.MODEL_POSITION.y - 1, // Move down by 20 units in Y axis
             CONFIG.SCENE.MODEL_POSITION.z
         );
 
