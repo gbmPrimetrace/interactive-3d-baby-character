@@ -384,34 +384,24 @@ class InteractiveBabyCharacter {
                         './body__Opacity.jpg'
                     ];
 
+                    // Load alpha map synchronously
                     let alphaMap = null;
-                    let alphaMapLoaded = false;
-
-                    const tryLoadAlphaMap = (index) => {
-                        if (index >= alphaMapPaths.length) {
-                            console.warn('Failed to load alpha map from all possible paths');
-                            return;
-                        }
-
-                        const path = alphaMapPaths[index];
-                        console.log(`Trying to load alpha map from: ${path}`);
-
-                        textureLoader.load(
-                            path,
-                            (texture) => {
-                                console.log(`✅ Alpha map loaded successfully from: ${path}`);
-                                alphaMap = texture;
-                                alphaMapLoaded = true;
-                            },
-                            undefined,
-                            (error) => {
-                                console.warn(`❌ Failed to load alpha map from ${path}:`, error);
-                                tryLoadAlphaMap(index + 1);
+                    for (let i = 0; i < alphaMapPaths.length; i++) {
+                        try {
+                            const path = alphaMapPaths[i];
+                            console.log(`Trying to load alpha map from: ${path}`);
+                            
+                            // Use synchronous loading for immediate access
+                            alphaMap = textureLoader.load(path);
+                            console.log(`✅ Alpha map loaded successfully from: ${path}`);
+                            break;
+                        } catch (error) {
+                            console.warn(`❌ Failed to load alpha map from ${alphaMapPaths[i]}:`, error);
+                            if (i === alphaMapPaths.length - 1) {
+                                console.warn('Failed to load alpha map from all possible paths');
                             }
-                        );
-                    };
-
-                    tryLoadAlphaMap(0);
+                        }
+                    }
 
                     standardMaterial = new THREE.MeshStandardMaterial({
                         color: child.material.color || 0xffffff,
@@ -426,6 +416,16 @@ class InteractiveBabyCharacter {
                         roughness: 0.5,
                         metalness: 0.1
                     });
+
+                    // Debug alpha map setup
+                    if (alphaMap) {
+                        console.log(`✅ Alpha map applied to ${child.name}:`, alphaMap);
+                        console.log(`   - Alpha map image:`, alphaMap.image);
+                        console.log(`   - Material transparent:`, standardMaterial.transparent);
+                        console.log(`   - Material alphaTest:`, standardMaterial.alphaTest);
+                    } else {
+                        console.warn(`⚠️ No alpha map loaded for ${child.name}`);
+                    }
                 } else {
                     // Apply standard material for other meshes
                     standardMaterial = new THREE.MeshStandardMaterial({
