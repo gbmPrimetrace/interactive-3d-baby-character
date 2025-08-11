@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Baby Character</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #808080;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-size: 16px;
+        }
+
+        #status {
+            padding: 10px 20px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+        }
+
+        #speech-display {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            z-index: 100;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        #speech-display::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #speech-display::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        #speech-display::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        #speech-display::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .speech-bubble {
+            margin-bottom: 15px;
+            padding: 15px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            line-height: 1.4;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease-in;
+            transition: all 0.3s ease;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .speech-content {
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+
+        .user-speech {
+            background: rgba(52, 152, 219, 0.8);
+            margin-left: 20px;
+            border-bottom-left-radius: 5px;
+        }
+
+        .baby-speech {
+            background: rgba(231, 76, 60, 0.8);
+            margin-right: 20px;
+            border-bottom-right-radius: 5px;
+        }
+
+        .speech-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #micButton {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #ff4757;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+        }
+
+        #micButton.recording {
+            background: #ff3838;
+            animation: pulse 1s infinite;
+            box-shadow: 0 4px 20px rgba(255, 56, 56, 0.6);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #resetButton {
+            background: rgba(255, 255, 255, 0.15);
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 200;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #ui {
+                top: 10px;
+                left: 10px;
+                font-size: 14px;
+            }
+
+            #status {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+
+            #speech-display {
+                top: 60px;
+                left: 10px;
+                max-width: calc(100vw - 40px);
+                max-height: 200px;
+            }
+
+            .speech-bubble {
+                padding: 12px 16px;
+                font-size: 13px;
+                margin-bottom: 10px;
+            }
+
+            #controls {
+                bottom: 30px;
+                gap: 20px;
+            }
+
+            #micButton {
+                width: 70px;
+                height: 70px;
+                font-size: 28px;
+            }
+
+            #resetButton {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            #loading {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #ui {
+                top: 5px;
+                left: 5px;
+                font-size: 12px;
+            }
+
+            #status {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            #speech-display {
+                top: 50px;
+                left: 5px;
+                max-width: calc(100vw - 20px);
+                max-height: 150px;
+            }
+
+            .speech-bubble {
+                padding: 10px 14px;
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+            #controls {
+                bottom: 40px;
+                gap: 25px;
+            }
+
+            #micButton {
+                width: 65px;
+                height: 65px;
+                font-size: 26px;
+            }
+
+            #resetButton {
+                font-size: 11px;
+                padding: 5px 10px;
+            }
+        }
+
+        /* Landscape orientation adjustments */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #ui {
+                top: 5px;
+                left: 5px;
+            }
+
+            #speech-display {
+                top: 40px;
+                max-height: 120px;
+            }
+
+            #controls {
+                bottom: 15px;
+                gap: 15px;
+            }
+
+            #micButton {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="loading">Loading 3D Model...</div>
+        <canvas id="canvas"></canvas>
+
+        <div id="ui">
+            <div id="status">Ready to interact</div>
+        </div>
+
+        <div id="speech-display">
+            <!-- Speech bubbles will be added here dynamically -->
+        </div>
+
+        <div id="controls">
+            <button id="micButton">🎤</button>
+            <button id="resetButton">Reset Camera</button>
+        </div>
+    </div>
+
+    <!-- Three.js and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Speech recognition and synthesis -->
+    <script src="https://cdn.jsdelivr.net/npm/web-speech-recognition@1.0.0/dist/web-speech-recognition.min.js"></script>
+
+    <!-- Configuration -->
+    <script src="config.js"></script>
+
+    <!-- Phoneme detection -->
+    <script src="phoneme-detector.js"></script>
+
+    <!-- Main application script -->
+    <script src="app.js"></script>
+</body>
+
+</html>
