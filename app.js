@@ -77,7 +77,7 @@ class InteractiveBabyCharacter {
 
             // Load the HDRI texture using EXR loader
             const exrLoader = new THREE.EXRLoader();
-            
+
             // Try multiple possible paths for GitHub Pages compatibility
             const possiblePaths = [
                 'src/hdri.exr',
@@ -95,7 +95,7 @@ class InteractiveBabyCharacter {
 
                 const path = possiblePaths[index];
                 console.log(`Trying to load HDRI from: ${path}`);
-                
+
                 exrLoader.load(
                     path,
                     (hdriTexture) => {
@@ -144,10 +144,10 @@ class InteractiveBabyCharacter {
             CONFIG.CAMERA.NEAR,
             CONFIG.CAMERA.FAR
         );
-        
+
         // Position camera to fit model on screen by default
         this.camera.position.set(0, 0.5, 2.5);
-        
+
         // Mobile-specific camera adjustments
         if (window.innerWidth <= 768) {
             this.camera.position.set(0, 0.3, 2.8); // Slightly further back on mobile
@@ -178,16 +178,16 @@ class InteractiveBabyCharacter {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.screenSpacePanning = false;
-        
+
         // Disable zoom in/out - only allow rotation
         this.controls.enableZoom = false;
         this.controls.enablePan = false;
-        
+
         // Set fixed distance for mobile-friendly viewing
         this.controls.minDistance = 2.5;
         this.controls.maxDistance = 2.5;
         this.controls.maxPolarAngle = CONFIG.CAMERA.MAX_POLAR_ANGLE;
-        
+
         // Mobile-specific settings
         if (window.innerWidth <= 768) {
             this.controls.enableDamping = false; // Disable damping on mobile for better performance
@@ -272,7 +272,7 @@ class InteractiveBabyCharacter {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
-            
+
             // Adjust camera position for mobile
             if (window.innerWidth <= 768) {
                 this.camera.position.set(0, 0.3, 2.8);
@@ -311,7 +311,7 @@ class InteractiveBabyCharacter {
 
                     const path = possiblePaths[index];
                     console.log(`Trying to load model from: ${path}`);
-                    
+
                     loader.load(
                         path,
                         (object) => {
@@ -339,7 +339,7 @@ class InteractiveBabyCharacter {
         } catch (error) {
             console.error('Error loading FBX model:', error);
             this.updateStatus('Error loading 3D model - check console for details');
-            
+
             // Show more helpful error message
             document.getElementById('loading').innerHTML = `
                 <div style="text-align: center; padding: 20px;">
@@ -375,7 +375,7 @@ class InteractiveBabyCharacter {
                 if (isBodyMesh) {
                     // Load alpha map for body mesh with fallback paths
                     const textureLoader = new THREE.TextureLoader();
-                    
+
                     // Try multiple possible paths for GitHub Pages compatibility
                     const alphaMapPaths = [
                         'src/body__Opacity.jpg',
@@ -383,19 +383,19 @@ class InteractiveBabyCharacter {
                         'body__Opacity.jpg',
                         './body__Opacity.jpg'
                     ];
-                    
+
                     let alphaMap = null;
                     let alphaMapLoaded = false;
-                    
+
                     const tryLoadAlphaMap = (index) => {
                         if (index >= alphaMapPaths.length) {
                             console.warn('Failed to load alpha map from all possible paths');
                             return;
                         }
-                        
+
                         const path = alphaMapPaths[index];
                         console.log(`Trying to load alpha map from: ${path}`);
-                        
+
                         textureLoader.load(
                             path,
                             (texture) => {
@@ -410,7 +410,7 @@ class InteractiveBabyCharacter {
                             }
                         );
                     };
-                    
+
                     tryLoadAlphaMap(0);
 
                     standardMaterial = new THREE.MeshStandardMaterial({
