@@ -196,6 +196,120 @@
             padding: 8px 16px;
         }
 
+        .emotion-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .emotion-panel h3 {
+            color: white;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+        }
+
+        .emotion-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .emotion-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .emotion-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .emotion-btn.happy {
+            background: #FFD700;
+            color: #333;
+        }
+
+        .emotion-btn.sad {
+            background: #87CEEB;
+            color: #333;
+        }
+
+        .emotion-btn.angry {
+            background: #FF6B6B;
+            color: white;
+        }
+
+        .emotion-btn.surprised {
+            background: #FFB6C1;
+            color: #333;
+        }
+
+        .emotion-btn.disgust {
+            background: #8FBC8F;
+            color: white;
+        }
+
+        .emotion-btn.fear {
+            background: #9370DB;
+            color: white;
+        }
+
+        .emotion-btn.contempt {
+            background: #F0E68C;
+            color: #333;
+        }
+
+        .emotion-btn.neutral {
+            background: #808080;
+            color: white;
+        }
+
+        .emotion-intensity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .intensity-slider {
+            width: 100px;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .intensity-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+
+        .intensity-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: none;
+        }
+
         #loading {
             position: absolute;
             top: 50%;
@@ -370,6 +484,30 @@
         <div id="controls">
             <button id="micButton">🎤</button>
             <button id="resetButton">Reset Camera</button>
+            <button id="testLipSync">Test Lip-Sync</button>
+
+            <button id="testAudioLipSync" style="background: #4CAF50; color: white;">Test Audio Lip-Sync</button>
+            <button id="toggleAPI" style="background: #4CAF50; color: white;">Use Real API</button>
+
+            <!-- Emotion Control Panel -->
+            <div class="emotion-panel">
+                <h3>Emotions</h3>
+                <div class="emotion-buttons">
+                    <button class="emotion-btn happy" data-emotion="happy">😊 Happy</button>
+                    <button class="emotion-btn sad" data-emotion="sad">😢 Sad</button>
+                    <button class="emotion-btn angry" data-emotion="angry">😠 Angry</button>
+                    <button class="emotion-btn surprised" data-emotion="surprised">😲 Surprised</button>
+                    <button class="emotion-btn disgust" data-emotion="disgust">🤢 Disgust</button>
+                    <button class="emotion-btn fear" data-emotion="fear">😨 Fear</button>
+                    <button class="emotion-btn contempt" data-emotion="contempt">😏 Contempt</button>
+                    <button class="emotion-btn neutral" data-emotion="neutral">😐 Neutral</button>
+                </div>
+                <div class="emotion-intensity">
+                    <label for="emotion-intensity">Intensity:</label>
+                    <input type="range" id="emotion-intensity" min="0" max="100" value="100" class="intensity-slider">
+                    <span id="intensity-value">100%</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -382,7 +520,7 @@
     <!-- Speech recognition and synthesis -->
     <script src="https://cdn.jsdelivr.net/npm/web-speech-recognition@1.0.0/dist/web-speech-recognition.min.js"></script>
 
-    <!-- Professional Lip-Sync System -->
+    <!-- Simple Lip-Sync System -->
     <script src="phoneme-detector.js"></script>
 
     <!-- Main application script -->
